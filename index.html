@@ -10,7 +10,6 @@
     --bg:#0b0e14;
     --ink:#e6eaf2;
     --muted:#a4acba;
-    --ring:#242a36;
     --fab:#111626;
     --fab-ring:#2a3142;
     --accent:#8ae0ff;
@@ -25,23 +24,18 @@
     overscroll-behavior-y:none;
   }
 
-  /* Stage fills the whole viewport */
+  /* Stage fills the viewport */
   .stage{position:fixed; inset:0; display:grid; place-items:center; padding:0;}
-  /* No dashed frame — just a full-bleed canvas area */
   .canvas{
-    position:relative;
-    width:100%;
-    height:100%;
-    max-width:1100px; /* keeps desktop from getting too wide */
-    max-height:100svh;
-    overflow:hidden;
-    display:grid; place-items:center;
+    position:relative; width:100%; height:100%;
+    max-width:1100px; max-height:100svh;
+    overflow:hidden; display:grid; place-items:center;
   }
 
   /* Outlines */
   .outline{
     position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-    border:2.5px solid; background:transparent;
+    border:2.5px solid; background:transparent; color:inherit;
     transition:width .45s cubic-bezier(.22,.9,.24,1),
                height .45s cubic-bezier(.22,.9,.24,1),
                border-radius .45s cubic-bezier(.22,.9,.24,1),
@@ -49,18 +43,30 @@
                opacity .25s ease;
   }
   .outline .tag{
-    position:absolute; top:-10px; right:-10px;
-    font-size:11px; color:var(--ink);
+    position:absolute; top:-10px; right:-10px; font-size:11px; color:var(--ink);
     background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.08);
     padding:4px 7px; border-radius:999px; white-space:nowrap; pointer-events:none;
     backdrop-filter:saturate(140%) blur(4px);
   }
 
-  /* Colors */
-  .me{  border-color:#23c8ff; box-shadow:0 0 0 1px rgba(35,200,255,.25) inset;}
-  .c1{  border-color:#7d84ff;}
-  .c2{  border-color:#5cf5b1;}
-  .c3{  border-color:#ffd76a;}
+  /* Cutouts (Dynamic Island / Notch) */
+  .cutout{
+    position:absolute; left:50%; transform:translateX(-50%);
+    border:2px solid currentColor; background:transparent;
+    pointer-events:none;
+    transition:width .45s,height .45s,border-radius .45s,top .45s;
+  }
+  .cutout.island{ border-radius:999px; }
+  .cutout.notch{
+    border-top-left-radius:12px; border-top-right-radius:12px;
+    border-bottom-left-radius:10px; border-bottom-right-radius:10px;
+  }
+
+  /* Colors (you + three comparisons) */
+  .me{  border-color:#23c8ff; color:#23c8ff; box-shadow:0 0 0 1px rgba(35,200,255,.25) inset;}
+  .c1{  border-color:#7d84ff; color:#7d84ff;}
+  .c2{  border-color:#5cf5b1; color:#5cf5b1;}
+  .c3{  border-color:#ffd76a; color:#ffd76a;}
 
   /* FAB + Drawer */
   .fab{
@@ -160,24 +166,27 @@
 <script>
 /* ========================= Data ========================= */
 const IPHONES = [
-  {id:'5-5s-SE1',   name:'iPhone 5 / 5s / SE (1st gen)',   w:320, h:568, diag:4.0},
-  {id:'6-7-8-SE23', name:'iPhone 6 / 7 / 8 / SE (2nd/3rd)', w:375, h:667, diag:4.7},
-  {id:'6P-7P-8P',   name:'iPhone 6 Plus / 7 Plus / 8 Plus', w:414, h:736, diag:5.5},
-  {id:'X-XS-11Pro', name:'iPhone X / XS / 11 Pro',          w:375, h:812, diag:5.8},
-  {id:'XR-11',      name:'iPhone XR / 11',                   w:414, h:896, diag:6.1},
-  {id:'12mini',     name:'iPhone 12 / 13 mini',              w:360, h:780, diag:5.4},
-  {id:'12-13-14-15-16',name:'iPhone 12 / 13 / 14 / 15 / 16', w:390, h:844, diag:6.1},
-  {id:'13Pro',      name:'iPhone 13 Pro',                    w:390, h:844, diag:6.1},
-  {id:'14-15Pro',   name:'iPhone 14 / 15 Pro',               w:393, h:852, diag:6.1},
-  {id:'14-15Plus',  name:'iPhone 14 / 15 Plus',              w:428, h:926, diag:6.7},
-  {id:'12-13PM',    name:'iPhone 12 / 13 Pro Max',           w:428, h:926, diag:6.7},
-  {id:'14-15PM',    name:'iPhone 14 / 15 Pro Max',           w:430, h:932, diag:6.7},
-  {id:'16Pro',      name:'iPhone 16 Pro',                    w:402, h:874, diag:6.3},
-  {id:'16ProMax',   name:'iPhone 16 Pro Max',                w:440, h:956, diag:6.9},
-  {id:'17',         name:'iPhone 17',                        w:402, h:874, diag:6.3},
-  {id:'17Pro',      name:'iPhone 17 Pro',                    w:402, h:874, diag:6.3},
-  {id:'17ProMax',   name:'iPhone 17 Pro Max',                w:440, h:956, diag:6.9},
-  {id:'Air',        name:'iPhone Air',                       w:414, h:900, diag:6.5},
+  {id:'5-5s-SE1',   name:'iPhone 5 / 5s / SE (1st gen)',   w:320, h:568, diag:4.0, cutout:'none'},
+  {id:'6-7-8-SE23', name:'iPhone 6 / 7 / 8 / SE (2nd/3rd)', w:375, h:667, diag:4.7, cutout:'none'},
+  {id:'6P-7P-8P',   name:'iPhone 6 Plus / 7 Plus / 8 Plus', w:414, h:736, diag:5.5, cutout:'none'},
+  {id:'X-XS-11Pro', name:'iPhone X / XS / 11 Pro',          w:375, h:812, diag:5.8, cutout:'notch'},
+  {id:'XR-11',      name:'iPhone XR / 11',                   w:414, h:896, diag:6.1, cutout:'notch'},
+  {id:'12mini',     name:'iPhone 12 / 13 mini',              w:360, h:780, diag:5.4, cutout:'notch'},
+  /* This group spans 12/13 (notch) and 15/16 (island). We default to **island**.
+     Use the override to pick a precise model if needed. */
+  {id:'12-13-14-15-16',name:'iPhone 12 / 13 / 14 / 15 / 16', w:390, h:844, diag:6.1, cutout:'island'},
+  {id:'13Pro',      name:'iPhone 13 Pro',                    w:390, h:844, diag:6.1, cutout:'notch'},
+  {id:'14-15Pro',   name:'iPhone 14 / 15 Pro',               w:393, h:852, diag:6.1, cutout:'island'},
+  /* 14 Plus (notch) + 15 Plus (island). Default to island; use override if you need 14 Plus notch. */
+  {id:'14-15Plus',  name:'iPhone 14 / 15 Plus',              w:428, h:926, diag:6.7, cutout:'island'},
+  {id:'12-13PM',    name:'iPhone 12 / 13 Pro Max',           w:428, h:926, diag:6.7, cutout:'notch'},
+  {id:'14-15PM',    name:'iPhone 14 / 15 Pro Max',           w:430, h:932, diag:6.7, cutout:'island'},
+  {id:'16Pro',      name:'iPhone 16 Pro',                    w:402, h:874, diag:6.3, cutout:'island'},
+  {id:'16ProMax',   name:'iPhone 16 Pro Max',                w:440, h:956, diag:6.9, cutout:'island'},
+  {id:'17',         name:'iPhone 17',                        w:402, h:874, diag:6.3, cutout:'island'},
+  {id:'17Pro',      name:'iPhone 17 Pro',                    w:402, h:874, diag:6.3, cutout:'island'},
+  {id:'17ProMax',   name:'iPhone 17 Pro Max',                w:440, h:956, diag:6.9, cutout:'island'},
+  {id:'Air',        name:'iPhone Air',                       w:414, h:900, diag:6.5, cutout:'island'},
 ];
 
 /* Corner-radius heuristics (ratio of min(w,h)) */
@@ -406,6 +415,31 @@ function renderOutlines(){
     el.style.width = `${w}px`;
     el.style.height = `${h}px`;
     el.style.borderRadius = Math.round(Math.min(w,h)*rRatio)+'px';
+
+    // Add cutout if applicable
+    const cut = (m.cutout||'none');
+    if (cut !== 'none'){
+      const c = document.createElement('div');
+      c.className = `cutout ${cut}`;
+      // Position & size as a function of the outline size
+      // top offset: small safe inset
+      const top = h * 0.025; // 2.5% down from top
+      let cw, ch, br;
+      if (cut === 'island'){
+        cw = w * 0.34;          // ~1/3 screen width
+        ch = Math.max(10, h*0.06);
+        br = Math.min(cw, ch) * 0.5;
+        c.style.borderRadius = `${br}px`;
+      }else{ // notch
+        cw = w * 0.44;
+        ch = Math.max(12, h*0.065);
+        // border-radius set via CSS class; leave as is
+      }
+      c.style.top = `${top}px`;
+      c.style.width = `${cw}px`;
+      c.style.height = `${ch}px`;
+      el.appendChild(c);
+    }
 
     const tag = document.createElement('div');
     tag.className = 'tag';
