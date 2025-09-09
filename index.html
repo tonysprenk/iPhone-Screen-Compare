@@ -24,6 +24,7 @@
   body{
     margin:0; background:var(--bg); color:var(--ink);
     font:15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    overscroll-behavior-y: none; /* helps reduce pull-to-refresh */
   }
 
   /* Stage */
@@ -83,17 +84,30 @@
   .fab .dot{width:8px; height:8px; border-radius:50%; background:var(--ok)}
   .fab .txt{font-size:13px; color:var(--muted)}
   .fab:hover{filter:brightness(1.05)}
+
+  .scrim{
+    position:fixed; inset:0; backdrop-filter:saturate(140%) blur(2px);
+    background:rgba(0,0,0,.35); opacity:0; pointer-events:none; transition:opacity .25s ease; z-index:11;
+  }
+  .scrim.show{ opacity:1; pointer-events:auto; }
+
   .drawer{
     position:fixed; left:0; right:0; bottom:0; z-index:12;
     background:linear-gradient(180deg, #101628, #0c1220);
     border-top:1px solid var(--fab-ring);
     box-shadow:0 -18px 40px rgba(0,0,0,.45);
     transform:translateY(100%); transition:transform .35s cubic-bezier(.22,.9,.24,1);
+    max-height:86vh; display:grid; grid-template-rows:auto 1fr auto;
   }
   .drawer.open{ transform:translateY(0) }
-  .drawer .bar{width:42px; height:4px; border-radius:99px; background:#2b3143; margin:8px auto}
+  .drawer .head{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:10px 14px; border-bottom:1px solid var(--fab-ring);
+  }
+  .drawer .head h2{font-size:14px; margin:0; font-weight:600}
+  .drawer .head .btn{all:unset; cursor:pointer; padding:7px 12px; border:1px solid var(--fab-ring); border-radius:10px}
+  .drawer .body{overflow:auto}
   .drawer .wrap{display:grid; gap:14px; padding:8px 14px 16px; max-width:1100px; margin:0 auto}
-  .row{display:grid; gap:8px}
   @media (min-width:860px){ .grid2{grid-template-columns:1fr 1fr; display:grid; gap:14px} }
   .card{
     border:1px solid var(--fab-ring); border-radius:14px; padding:12px; background:rgba(255,255,255,.02);
@@ -113,7 +127,9 @@
   .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px}
   .pill{display:flex; gap:8px; align-items:center; padding:6px 10px; border:1px solid var(--fab-ring); border-radius:999px}
   .pill button{all:unset; cursor:pointer; width:18px; height:18px; line-height:18px; text-align:center; border:1px solid var(--fab-ring); border-radius:50%; color:var(--muted)}
-  .footer{font-size:12px; color:var(--muted); text-align:center; padding-bottom:84px}
+  .footer{font-size:12px; color:var(--muted); text-align:center; padding:10px 14px; border-top:1px solid var(--fab-ring)}
+  .actions{display:flex; justify-content:flex-end; gap:8px; padding:10px 14px; border-top:1px solid var(--fab-ring)}
+  .primary{background:var(--accent); color:#07121d; border-color:transparent; font-weight:600}
 </style>
 </head>
 <body>
@@ -125,42 +141,54 @@
     </div>
   </main>
 
+  <!-- Scrim -->
+  <div class="scrim" id="scrim" aria-hidden="true"></div>
+
   <!-- Floating action button -->
-  <button class="fab" id="fab">
+  <button class="fab" id="fab" aria-haspopup="dialog" aria-controls="drawer">
     <div class="dot" aria-hidden="true"></div>
     <div class="txt">Screens & comparisons</div>
   </button>
 
-  <!-- Bottom drawer -->
-  <section class="drawer" id="drawer" aria-hidden="true">
-    <div class="bar"></div>
-    <div class="wrap">
-      <div class="grid2">
-        <div class="card">
-          <h3>Your device</h3>
-          <div class="kv" id="kv">
-            <div>Detected</div><div id="detectedName" class="muted">—</div>
-            <div>Logical</div><div id="detectedDims" class="muted">—</div>
-            <div>DPR</div><div id="kvDPR" class="muted">—</div>
-            <div>Diagonal</div><div id="kvDiag" class="muted">—</div>
+  <!-- Bottom drawer (dialog) -->
+  <section class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" aria-hidden="true">
+    <div class="head">
+      <h2 id="drawerTitle">Screens & comparisons</h2>
+      <div style="display:flex; gap:8px">
+        <button class="btn" id="closeBtn" aria-label="Close">Close</button>
+      </div>
+    </div>
+    <div class="body">
+      <div class="wrap">
+        <div class="grid2">
+          <div class="card">
+            <h3>Your device</h3>
+            <div class="kv" id="kv">
+              <div>Detected</div><div id="detectedName" class="muted">—</div>
+              <div>Logical</div><div id="detectedDims" class="muted">—</div>
+              <div>DPR</div><div id="kvDPR" class="muted">—</div>
+              <div>Diagonal</div><div id="kvDiag" class="muted">—</div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; margin-top:10px">
+              <select id="overrideSel" class="select" aria-label="Override model"></select>
+              <button class="btn" id="applyOverride">Set</button>
+              <button class="btn" id="clearOverride">Clear</button>
+            </div>
           </div>
-          <div style="display:flex; gap:8px; align-items:center; margin-top:10px">
-            <select id="overrideSel" class="select" aria-label="Override model"></select>
-            <button class="btn" id="applyOverride">Set</button>
-            <button class="btn" id="clearOverride">Clear</button>
-          </div>
-        </div>
 
-        <div class="card">
-          <h3>Compare iPhones (up to 3)</h3>
-          <input class="search" id="search" placeholder="Search iPhone models…">
-          <div class="pills" id="pills"></div>
-          <div class="models" id="modelList" role="listbox" aria-label="iPhone models"></div>
+          <div class="card">
+            <h3>Compare iPhones (up to 3)</h3>
+            <input class="search" id="search" placeholder="Search iPhone models…">
+            <div class="pills" id="pills"></div>
+            <div class="models" id="modelList" role="listbox" aria-label="iPhone models"></div>
+          </div>
         </div>
       </div>
-
-      <div class="footer">Sizes use CSS logical points + typical diagonals. Detection can vary with browser chrome or Display Zoom. Use the override if needed.</div>
     </div>
+    <div class="actions">
+      <button class="btn primary" id="doneBtn">Done</button>
+    </div>
+    <div class="footer">Tip: you can also tap outside the drawer to close. Changes apply instantly.</div>
   </section>
 
 <script>
@@ -178,10 +206,10 @@ const IPHONES = [
   {id:'14-15Plus',  name:'iPhone 14 / 15 Plus',              w:428, h:926, diag:6.7},
   {id:'12-13PM',    name:'iPhone 12 / 13 Pro Max',           w:428, h:926, diag:6.7},
   {id:'14-15PM',    name:'iPhone 14 / 15 Pro Max',           w:430, h:932, diag:6.7},
-  // 16 references
+  // iPhone 16 family
   {id:'16Pro',      name:'iPhone 16 Pro',                    w:402, h:874, diag:6.3},
   {id:'16ProMax',   name:'iPhone 16 Pro Max',                w:440, h:956, diag:6.9},
-  // 17 family (points ≈ 16-series), Air approx
+  // iPhone 17 family (points ≈ 16-series), iPhone Air (approx)
   {id:'17',         name:'iPhone 17',                        w:402, h:874, diag:6.3},
   {id:'17Pro',      name:'iPhone 17 Pro',                    w:402, h:874, diag:6.3},
   {id:'17ProMax',   name:'iPhone 17 Pro Max',                w:440, h:956, diag:6.9},
@@ -206,6 +234,7 @@ function getAllViewportCandidates(){
   push(window.innerWidth, window.innerHeight);
   push(document.documentElement.clientWidth, document.documentElement.clientHeight);
   if (window.visualViewport) push(window.visualViewport.width, window.visualViewport.height);
+  // iOS sometimes reports portrait-based CSS px via screen.*
   push(screen.width, screen.height);
   const uniq = [...new Set(pairs.map(p=>p.join('x')))].map(s=>s.split('x').map(n=>+n));
   return uniq;
@@ -262,12 +291,24 @@ const state = {
 /* ========================= Drawer / FAB ========================= */
 const fab = $('#fab');
 const drawer = $('#drawer');
-function toggleDrawer(force){
-  const open = typeof force==='boolean' ? force : !drawer.classList.contains('open');
+const scrim = $('#scrim');
+const doneBtn = $('#doneBtn');
+const closeBtn = $('#closeBtn');
+
+function setDrawer(open){
   drawer.classList.toggle('open', open);
   drawer.setAttribute('aria-hidden', String(!open));
+  scrim.classList.toggle('show', open);
 }
-fab.addEventListener('click', ()=> toggleDrawer());
+function toggleDrawer(force){
+  const open = typeof force==='boolean' ? force : !drawer.classList.contains('open');
+  setDrawer(open);
+}
+fab.addEventListener('click', ()=> toggleDrawer(true));
+doneBtn.addEventListener('click', ()=> toggleDrawer(false));
+closeBtn.addEventListener('click', ()=> toggleDrawer(false));
+scrim.addEventListener('click', ()=> toggleDrawer(false));
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') toggleDrawer(false); });
 
 /* ========================= UI: Lists & Pills ========================= */
 function populateOverride(){
@@ -306,7 +347,7 @@ function renderPills(){
   state.selected.forEach(id=>{
     const m = IPHONES.find(x=>x.id===id);
     const p = document.createElement('div'); p.className='pill';
-    p.innerHTML = `<span>${m.name}</span><button>&times;</button>`;
+    p.innerHTML = `<span>${m.name}</span><button aria-label="Remove">&times;</button>`;
     p.querySelector('button').onclick = ()=>{
       state.selected = state.selected.filter(x=>x!==id);
       renderPills(); renderModelList($('#search').value); renderOutlines();
@@ -328,7 +369,6 @@ $('#clearOverride').addEventListener('click', ()=>{
 
 /* ========================= Detection + Info ========================= */
 function updateDetection(){
-  const vv = (window.visualViewport? [window.visualViewport.width, window.visualViewport.height] : ['—','—']).join('×');
   const detected = state.overrideId
     ? (()=>{ const m = IPHONES.find(x=>x.id===state.overrideId); return {w:m.w,h:m.h,model:m}; })()
     : getDetectedLogical();
@@ -356,7 +396,7 @@ function updateInfoPanel(){ // when override applied without redetect
 
 /* ========================= Outline Renderer ========================= */
 /*
-  We draw your screen (“me”) + up to 3 selected models as simple perimeter rectangles.
+  Draw your screen (“me”) + up to 3 selected models as simple perimeter rectangles.
   Scaling uses diagonal inches: the largest diagonal in view is scaled to fit the canvas,
   others scale proportionally. Aspect ratios use logical points (w × h).
 */
@@ -376,22 +416,6 @@ function renderOutlines(){
   const pad = 28;
   const maxW = canvas.clientWidth  - pad*2;
   const maxH = canvas.clientHeight - pad*2;
-
-  // Helper to compute width/height (px) for a model scaled by diagonal ratio
-  function sizeFor(model){
-    // Normalize base: use its logical aspect, then scale by diag ratio vs max
-    const aspect = model.w / model.h;
-    // Make a reference rectangle for the "maxDiag" model: fit its screen in canvas
-    // Then scale this model by (model.diag / maxDiag)
-    // First, compute the fitted size for the rectangle representing aspect of the "largest" model.
-    // We'll actually compute once for the largest's aspect; but different models have diff aspect.
-    // Simpler: fit the current model's aspect directly into canvas, then multiply by diagRatio compared to itself @ max.
-    // So we need a common baseline. We'll fit a virtual 1×1 square for max, but that breaks aspect. Better:
-    // Approach: pick a reference logical rectangle of size equal to its own logical points; scale factor S so that
-    // max model (by diag) fits maxW×maxH. For another model, multiply by (model.diag / maxDiag).
-    // So first compute ref fit for a "unit" phone box (we'll use the max model's logical aspect for sizing S).
-    return {aspect};
-  }
 
   // Determine scale for the max model so it fits the canvas:
   const maxModel = models.find(x=>x.m.diag===maxDiag)?.m || models[0].m;
