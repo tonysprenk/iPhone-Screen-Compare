@@ -24,36 +24,28 @@
   body{
     margin:0; background:var(--bg); color:var(--ink);
     font:15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-    overscroll-behavior-y: none; /* helps reduce pull-to-refresh */
+    overscroll-behavior-y:none; /* reduce accidental pull-to-refresh on iOS */
   }
 
   /* Stage */
-  .stage{
-    position:fixed; inset:0;
-    display:grid; place-items:center;
-    padding:18px;
-  }
+  .stage{position:fixed; inset:0; display:grid; place-items:center; padding:18px;}
   .canvas{
     position:relative; width:100%; max-width:1100px; height:min(74vh,820px);
     border:1px dashed var(--ring); border-radius:20px;
-    overflow:hidden;
-    display:grid; place-items:center;
-  }
-  .hint{
-    position:absolute; top:10px; left:12px; font-size:12px; color:var(--muted);
+    overflow:hidden; display:grid; place-items:center;
   }
 
-  /* Outline phones */
+  /* Outlines */
   .outline{
     position:absolute; left:50%; top:50%;
     transform:translate(-50%,-50%);
-    border:2px solid;
-    border-radius:22px;
+    border:2px solid; background:transparent;
     transition:
       width .45s cubic-bezier(.22,.9,.24,1),
       height .45s cubic-bezier(.22,.9,.24,1),
-      opacity .25s ease, transform .45s cubic-bezier(.22,.9,.24,1);
-    background:transparent;
+      border-radius .45s cubic-bezier(.22,.9,.24,1),
+      transform .45s cubic-bezier(.22,.9,.24,1),
+      opacity .25s ease;
   }
   .outline .tag{
     position:absolute; top:-10px; right:-10px;
@@ -61,96 +53,76 @@
     background:rgba(0,0,0,.45);
     border:1px solid rgba(255,255,255,.08);
     padding:4px 7px; border-radius:999px; white-space:nowrap;
-    transform:translate(0,-4px);
-    pointer-events:none;
-    backdrop-filter:saturate(140%) blur(4px);
+    pointer-events:none; backdrop-filter:saturate(140%) blur(4px);
   }
 
-  /* Color mapping (max 4 overlays incl. "me") */
-  .me   { border-color:#23c8ff; box-shadow:0 0 0 1px rgba(35,200,255,.25) inset; }
-  .c1   { border-color:#7d84ff; }
-  .c2   { border-color:#5cf5b1; }
-  .c3   { border-color:#ffd76a; }
+  /* Colors (you + three comparisons) */
+  .me{  border-color:#23c8ff; box-shadow:0 0 0 1px rgba(35,200,255,.25) inset;}
+  .c1{  border-color:#7d84ff;}
+  .c2{  border-color:#5cf5b1;}
+  .c3{  border-color:#ffd76a;}
 
-  /* Bottom Floating Action + Drawer */
+  /* Floating button */
   .fab{
-    position:fixed; left:50%; transform:translateX(-50%);
-    bottom:18px; z-index:10;
-    background:var(--fab); color:var(--ink);
-    border:1px solid var(--fab-ring); border-radius:999px;
-    padding:10px 14px; display:flex; gap:10px; align-items:center;
+    position:fixed; left:50%; transform:translateX(-50%); bottom:18px; z-index:10;
+    background:var(--fab); color:var(--ink); border:1px solid var(--fab-ring);
+    border-radius:999px; padding:10px 14px; display:flex; gap:10px; align-items:center;
     cursor:pointer; box-shadow:var(--shadow);
   }
   .fab .dot{width:8px; height:8px; border-radius:50%; background:var(--ok)}
   .fab .txt{font-size:13px; color:var(--muted)}
-  .fab:hover{filter:brightness(1.05)}
 
-  .scrim{
-    position:fixed; inset:0; backdrop-filter:saturate(140%) blur(2px);
-    background:rgba(0,0,0,.35); opacity:0; pointer-events:none; transition:opacity .25s ease; z-index:11;
-  }
-  .scrim.show{ opacity:1; pointer-events:auto; }
+  /* Scrim */
+  .scrim{position:fixed; inset:0; background:rgba(0,0,0,.35); opacity:0; pointer-events:none; transition:.25s; z-index:11;}
+  .scrim.show{opacity:1; pointer-events:auto;}
 
+  /* Drawer */
   .drawer{
     position:fixed; left:0; right:0; bottom:0; z-index:12;
-    background:linear-gradient(180deg, #101628, #0c1220);
-    border-top:1px solid var(--fab-ring);
-    box-shadow:0 -18px 40px rgba(0,0,0,.45);
+    background:linear-gradient(180deg,#101628,#0c1220);
+    border-top:1px solid var(--fab-ring); box-shadow:0 -18px 40px rgba(0,0,0,.45);
     transform:translateY(100%); transition:transform .35s cubic-bezier(.22,.9,.24,1);
     max-height:86vh; display:grid; grid-template-rows:auto 1fr auto;
   }
-  .drawer.open{ transform:translateY(0) }
-  .drawer .head{
-    display:flex; align-items:center; justify-content:space-between; gap:8px;
-    padding:10px 14px; border-bottom:1px solid var(--fab-ring);
-  }
-  .drawer .head h2{font-size:14px; margin:0; font-weight:600}
+  .drawer.open{transform:translateY(0)}
+  .drawer .head{display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:10px 14px; border-bottom:1px solid var(--fab-ring);}
+  .drawer .head h2{margin:0; font-size:14px; font-weight:600}
   .drawer .head .btn{all:unset; cursor:pointer; padding:7px 12px; border:1px solid var(--fab-ring); border-radius:10px}
   .drawer .body{overflow:auto}
   .drawer .wrap{display:grid; gap:14px; padding:8px 14px 16px; max-width:1100px; margin:0 auto}
-  @media (min-width:860px){ .grid2{grid-template-columns:1fr 1fr; display:grid; gap:14px} }
-  .card{
-    border:1px solid var(--fab-ring); border-radius:14px; padding:12px; background:rgba(255,255,255,.02);
-  }
+  @media(min-width:860px){.grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px}}
+  .card{border:1px solid var(--fab-ring); border-radius:14px; padding:12px; background:rgba(255,255,255,.02);}
   .card h3{margin:0 0 6px 0; font-size:13px}
   .kv{display:grid; grid-template-columns:auto 1fr; gap:2px 10px; font-size:12px; color:var(--muted)}
   .muted{color:var(--muted)}
   .btn{all:unset; cursor:pointer; padding:7px 10px; border:1px solid var(--fab-ring); border-radius:10px}
-  .select, .search{
-    width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--fab-ring);
-    background:transparent; color:var(--ink);
-  }
+  .select,.search{width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--fab-ring); background:transparent; color:var(--ink);}
   .models{max-height:240px; overflow:auto; border:1px solid var(--fab-ring); border-radius:12px}
   .model{display:flex; justify-content:space-between; align-items:center; padding:8px 10px}
   .model small{color:var(--muted)}
   .model:hover{background:rgba(255,255,255,.03)}
   .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px}
   .pill{display:flex; gap:8px; align-items:center; padding:6px 10px; border:1px solid var(--fab-ring); border-radius:999px}
-  .pill button{all:unset; cursor:pointer; width:18px; height:18px; line-height:18px; text-align:center; border:1px solid var(--fab-ring); border-radius:50%; color:var(--muted)}
-  .footer{font-size:12px; color:var(--muted); text-align:center; padding:10px 14px; border-top:1px solid var(--fab-ring)}
+  .pill button{all:unset; cursor:pointer; width:18px; height:18px; text-align:center; border:1px solid var(--fab-ring); border-radius:50%; color:var(--muted)}
   .actions{display:flex; justify-content:flex-end; gap:8px; padding:10px 14px; border-top:1px solid var(--fab-ring)}
   .primary{background:var(--accent); color:#07121d; border-color:transparent; font-weight:600}
+  .footer{font-size:12px; color:var(--muted); text-align:center; padding:10px 14px; border-top:1px solid var(--fab-ring)}
 </style>
 </head>
 <body>
 
   <main class="stage">
-    <div class="canvas" id="canvas">
-      <div class="hint">Simple outlines: your screen + up to 3 comparisons. Rotate to see live morphing.</div>
-      <!-- outlines injected -->
-    </div>
+    <div class="canvas" id="canvas"><!-- outlines injected --></div>
   </main>
 
-  <!-- Scrim -->
   <div class="scrim" id="scrim" aria-hidden="true"></div>
 
-  <!-- Floating action button -->
   <button class="fab" id="fab" aria-haspopup="dialog" aria-controls="drawer">
     <div class="dot" aria-hidden="true"></div>
     <div class="txt">Screens & comparisons</div>
   </button>
 
-  <!-- Bottom drawer (dialog) -->
   <section class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" aria-hidden="true">
     <div class="head">
       <h2 id="drawerTitle">Screens & comparisons</h2>
@@ -188,7 +160,7 @@
     <div class="actions">
       <button class="btn primary" id="doneBtn">Done</button>
     </div>
-    <div class="footer">Tip: you can also tap outside the drawer to close. Changes apply instantly.</div>
+    <div class="footer">Tap Done (or outside) to close. Changes apply instantly.</div>
   </section>
 
 <script>
@@ -216,6 +188,27 @@ const IPHONES = [
   {id:'Air',        name:'iPhone Air',                       w:414, h:900, diag:6.5},
 ];
 
+/* Corner radius heuristics — tuned per family so outlines hug real screens better. 
+   Values are a ratio of min(w,h). We compute pixels per model at render time. */
+const RATIO_BY_ID = {
+  '16ProMax':0.112, '17ProMax':0.112, '14-15PM':0.110,
+  '16Pro':0.108, '17':0.108, '17Pro':0.108,
+  '12-13-14-15-16':0.108, '13Pro':0.108, '14-15Pro':0.108,
+  '14-15Plus':0.109, '12-13PM':0.109,
+  '12mini':0.106, 'XR-11':0.098, 'X-XS-11Pro':0.096,
+  '6P-7P-8P':0.066, '6-7-8-SE23':0.060, '5-5s-SE1':0.045,
+  'Air':0.107
+};
+function cornerRatioFor(m){
+  if (RATIO_BY_ID[m.id]) return RATIO_BY_ID[m.id];
+  // fallback by diagonal
+  if (m.diag >= 6.8) return 0.112;
+  if (m.diag >= 6.1) return 0.108;
+  if (m.diag >= 5.6) return 0.100;
+  return 0.095;
+}
+
+/* Alternate viewport buckets (maps common iOS-reported sizes to known logical points) */
 const ALT_VIEWPORTS = [
   {alts:[[430,932],[428,926],[429,932],[431,934]], target:{w:430,h:932}, mapsTo:'14-15PM'},
   {alts:[[440,956],[439,954],[441,958]],           target:{w:440,h:956}, mapsTo:'16ProMax'},
@@ -234,7 +227,6 @@ function getAllViewportCandidates(){
   push(window.innerWidth, window.innerHeight);
   push(document.documentElement.clientWidth, document.documentElement.clientHeight);
   if (window.visualViewport) push(window.visualViewport.width, window.visualViewport.height);
-  // iOS sometimes reports portrait-based CSS px via screen.*
   push(screen.width, screen.height);
   const uniq = [...new Set(pairs.map(p=>p.join('x')))].map(s=>s.split('x').map(n=>+n));
   return uniq;
@@ -379,7 +371,6 @@ function updateDetection(){
     w: detected.w, h: detected.h, diag:+diag.toFixed(2), matched: detected.model
   };
 
-  // info panel basics
   $('#detectedName').textContent = state.me.name + (state.overrideId ? ' (override)' : '');
   $('#detectedDims').textContent = `${state.me.w}×${state.me.h} logical points`;
   $('#kvDPR').textContent = `${window.devicePixelRatio||1}`;
@@ -387,7 +378,7 @@ function updateDetection(){
 
   renderOutlines();
 }
-function updateInfoPanel(){ // when override applied without redetect
+function updateInfoPanel(){
   $('#detectedName').textContent = state.me.name + (state.overrideId ? ' (override)' : '');
   $('#detectedDims').textContent = `${state.me.w}×${state.me.h} logical points`;
   $('#kvDPR').textContent = `${window.devicePixelRatio||1}`;
@@ -395,45 +386,41 @@ function updateInfoPanel(){ // when override applied without redetect
 }
 
 /* ========================= Outline Renderer ========================= */
-/*
-  Draw your screen (“me”) + up to 3 selected models as simple perimeter rectangles.
-  Scaling uses diagonal inches: the largest diagonal in view is scaled to fit the canvas,
-  others scale proportionally. Aspect ratios use logical points (w × h).
-*/
 function renderOutlines(){
   const canvas = $('#canvas');
-  // Remove old
   $$('.outline').forEach(n=>n.remove());
 
-  const models = [ {kind:'me',   m:state.me},
-                   ...state.selected.map((id,i)=>({kind:'c'+(i+1), m:IPHONES.find(x=>x.id===id)})) ];
+  const models = [{kind:'me', m:state.me},
+    ...state.selected.map((id,i)=>({kind:'c'+(i+1), m:IPHONES.find(x=>x.id===id)}))];
 
   if (!models.length) return;
 
-  // Find the largest diagonal to fit
-  const maxDiag = Math.max(...models.map(x=>x.m.diag || 0.01));
-  // canvas inner padding
-  const pad = 28;
-  const maxW = canvas.clientWidth  - pad*2;
+  // Largest diagonal -> fit to canvas
+  const maxDiag = Math.max(...models.map(x=>x.m?.diag || 0.01));
+  const pad = 28; // inner padding within the dashed canvas box
+  const maxW = canvas.clientWidth - pad*2;
   const maxH = canvas.clientHeight - pad*2;
 
-  // Determine scale for the max model so it fits the canvas:
-  const maxModel = models.find(x=>x.m.diag===maxDiag)?.m || models[0].m;
+  const maxModel = models.find(x=>x.m && x.m.diag===maxDiag)?.m || models[0].m;
   const sMax = Math.min(maxW/maxModel.w, maxH/maxModel.h);
-  // Now each model's scale:
+
   function dims(m){
     const ratio = (m.diag / maxDiag);
     const s = sMax * ratio;
-    return { w: m.w * s, h: m.h * s };
+    return { w: m.w * s, h: m.h * s, rRatio: cornerRatioFor(m) };
   }
 
   models.forEach(({kind,m})=>{
     if (!m || !m.w) return;
-    const {w,h} = dims(m);
+    const {w,h,rRatio} = dims(m);
     const el = document.createElement('div');
     el.className = `outline ${kind}`;
     el.style.width = `${w}px`;
     el.style.height = `${h}px`;
+    // Model-aware rounded corners in *pixels* to mimic actual iPhone screen curvature
+    const pxRadius = Math.round(Math.min(w,h) * rRatio);
+    el.style.borderRadius = pxRadius + 'px';
+
     const tag = document.createElement('div');
     tag.className = 'tag';
     tag.textContent = `${m.name.replace('iPhone ','')} • ${m.diag}"`;
