@@ -3,205 +3,168 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>iPhone Screen Compare</title>
-<meta name="theme-color" content="#0f1115">
-<meta property="og:title" content="iPhone Screen Compare">
-<meta property="og:description" content="Compare your iPhone’s screen to up to 3 other models — with live, morphing visuals.">
+<title>iPhone Screen Compare — Outline</title>
+<meta name="theme-color" content="#0b0e14">
 <style>
   :root{
-    --bg: #0f1115;
-    --card: #141823;
-    --ink: #e8ecf2;
-    --ink-dim:#aab2c0;
-    --accent:#6ee7ff;
-    --ring:#2a3142;
+    --bg:#0b0e14;
+    --ink:#e6eaf2;
+    --muted:#a4acba;
+    --ring:#242a36;
+    --fab:#111626;
+    --fab-ring:#2a3142;
+    --accent:#8ae0ff;
     --ok:#5cf5b1;
-    --warn:#ffdd57;
-    --radius:18px;
-    --gap:14px;
-    --shadow: 0 10px 30px rgba(0,0,0,.35);
-    --frame:#1c2233;
+    --warn:#ffd76a;
+    --radius:16px;
+    --shadow:0 14px 40px rgba(0,0,0,.35);
   }
   *{box-sizing:border-box}
   html,body{height:100%}
   body{
     margin:0; background:var(--bg); color:var(--ink);
-    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text",
-      Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    font:15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
   }
-  header{
-    position:sticky; top:0; z-index:5; backdrop-filter:saturate(180%) blur(8px);
-    background:color-mix(in oklab, var(--bg) 70%, black 30% / 20%);
-    border-bottom:1px solid var(--ring); padding:16px 12px;
-  }
-  header .row{
-    max-width:1100px; margin:0 auto; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
-  }
-  h1{font-size:16px; margin:0; letter-spacing:.2px; font-weight:600; opacity:.95}
-  .chip{padding:8px 10px; border:1px solid var(--ring); border-radius:999px; color:var(--ink-dim)}
-  .container{max-width:1100px; margin:16px auto; padding:0 12px}
-  .grid{display:grid; gap:var(--gap); grid-template-columns: 320px 1fr}
-  @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
 
-  .panel{
-    background:var(--card); border:1px solid var(--ring);
-    border-radius:var(--radius); padding:16px; box-shadow:var(--shadow);
+  /* Stage */
+  .stage{
+    position:fixed; inset:0;
+    display:grid; place-items:center;
+    padding:18px;
   }
-  .panel h2{font-size:14px; margin:0 0 8px 0; font-weight:600; color:var(--ink)}
-  .muted{color:var(--ink-dim)}
-  .kv{display:grid; grid-template-columns:auto 1fr; gap:2px 10px; margin-top:8px}
-  .tagline{font-size:12px; color:var(--ink-dim); margin-top:4px}
-  .detected{
-    display:flex; align-items:center; gap:12px; padding:12px; border:1px dashed var(--ring);
-    border-radius:12px; margin-bottom:12px;
+  .canvas{
+    position:relative; width:100%; max-width:1100px; height:min(74vh,820px);
+    border:1px dashed var(--ring); border-radius:20px;
+    overflow:hidden;
+    display:grid; place-items:center;
   }
-  .dot{width:8px; height:8px; border-radius:50%; background:var(--ok)}
-  .select-wrap{display:flex; flex-direction:column; gap:10px; margin-top:12px}
-  .search{
-    width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--ring);
+  .hint{
+    position:absolute; top:10px; left:12px; font-size:12px; color:var(--muted);
+  }
+
+  /* Outline phones */
+  .outline{
+    position:absolute; left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    border:2px solid;
+    border-radius:22px;
+    transition:
+      width .45s cubic-bezier(.22,.9,.24,1),
+      height .45s cubic-bezier(.22,.9,.24,1),
+      opacity .25s ease, transform .45s cubic-bezier(.22,.9,.24,1);
+    background:transparent;
+  }
+  .outline .tag{
+    position:absolute; top:-10px; right:-10px;
+    font-size:11px; color:var(--ink);
+    background:rgba(0,0,0,.45);
+    border:1px solid rgba(255,255,255,.08);
+    padding:4px 7px; border-radius:999px; white-space:nowrap;
+    transform:translate(0,-4px);
+    pointer-events:none;
+    backdrop-filter:saturate(140%) blur(4px);
+  }
+
+  /* Color mapping (max 4 overlays incl. "me") */
+  .me   { border-color:#23c8ff; box-shadow:0 0 0 1px rgba(35,200,255,.25) inset; }
+  .c1   { border-color:#7d84ff; }
+  .c2   { border-color:#5cf5b1; }
+  .c3   { border-color:#ffd76a; }
+
+  /* Bottom Floating Action + Drawer */
+  .fab{
+    position:fixed; left:50%; transform:translateX(-50%);
+    bottom:18px; z-index:10;
+    background:var(--fab); color:var(--ink);
+    border:1px solid var(--fab-ring); border-radius:999px;
+    padding:10px 14px; display:flex; gap:10px; align-items:center;
+    cursor:pointer; box-shadow:var(--shadow);
+  }
+  .fab .dot{width:8px; height:8px; border-radius:50%; background:var(--ok)}
+  .fab .txt{font-size:13px; color:var(--muted)}
+  .fab:hover{filter:brightness(1.05)}
+  .drawer{
+    position:fixed; left:0; right:0; bottom:0; z-index:12;
+    background:linear-gradient(180deg, #101628, #0c1220);
+    border-top:1px solid var(--fab-ring);
+    box-shadow:0 -18px 40px rgba(0,0,0,.45);
+    transform:translateY(100%); transition:transform .35s cubic-bezier(.22,.9,.24,1);
+  }
+  .drawer.open{ transform:translateY(0) }
+  .drawer .bar{width:42px; height:4px; border-radius:99px; background:#2b3143; margin:8px auto}
+  .drawer .wrap{display:grid; gap:14px; padding:8px 14px 16px; max-width:1100px; margin:0 auto}
+  .row{display:grid; gap:8px}
+  @media (min-width:860px){ .grid2{grid-template-columns:1fr 1fr; display:grid; gap:14px} }
+  .card{
+    border:1px solid var(--fab-ring); border-radius:14px; padding:12px; background:rgba(255,255,255,.02);
+  }
+  .card h3{margin:0 0 6px 0; font-size:13px}
+  .kv{display:grid; grid-template-columns:auto 1fr; gap:2px 10px; font-size:12px; color:var(--muted)}
+  .muted{color:var(--muted)}
+  .btn{all:unset; cursor:pointer; padding:7px 10px; border:1px solid var(--fab-ring); border-radius:10px}
+  .select, .search{
+    width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--fab-ring);
     background:transparent; color:var(--ink);
   }
-  .label{font-size:12px; color:var(--ink-dim); margin:2px 0}
-  .models{
-    max-height:260px; overflow:auto; border:1px solid var(--ring); border-radius:12px;
-  }
-  .model{
-    display:flex; justify-content:space-between; align-items:center; gap:10px;
-    padding:10px 12px; cursor:pointer; transition:.2s background;
-  }
+  .models{max-height:240px; overflow:auto; border:1px solid var(--fab-ring); border-radius:12px}
+  .model{display:flex; justify-content:space-between; align-items:center; padding:8px 10px}
+  .model small{color:var(--muted)}
   .model:hover{background:rgba(255,255,255,.03)}
-  .model small{color:var(--ink-dim)}
-  .pillrow{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px}
-  .pill{
-    display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px;
-    background:rgba(255,255,255,.06); border:1px solid var(--ring)
-  }
-  .pill button{
-    all:unset; cursor:pointer; width:18px; height:18px; line-height:18px;
-    text-align:center; border-radius:50%; border:1px solid var(--ring);
-    color:var(--ink-dim)
-  }
-
-  .stage{
-    background:var(--card); border:1px solid var(--ring);
-    border-radius:var(--radius); padding:16px; min-height:480px; box-shadow:var(--shadow);
-    display:grid; gap:var(--gap);
-  }
-  .stage-head{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap}
-  .legend{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
-  .legend .key{display:flex; align-items:center; gap:6px; color:var(--ink-dim); font-size:12px}
-  .swatch{width:12px; height:12px; border-radius:3px}
-  .swatch.me{background:linear-gradient(180deg,#91f2ff,#1ed0ff)}
-  .swatch.them{background:linear-gradient(180deg,#b2b8ff,#6f7bff)}
-  .canvas{
-    position:relative; width:100%; border:1px dashed var(--ring); border-radius:16px;
-    display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:var(--gap);
-    padding:12px; min-height:360px; align-content:start;
-  }
-  .viz-card{
-    position:relative; border:1px solid var(--ring); border-radius:14px; padding:12px;
-    background:rgba(255,255,255,.02); min-height:260px; overflow:hidden;
-  }
-  .viz-head{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px}
-  .viz-head h3{font-size:13px; margin:0; font-weight:600}
-  .viz-head small{color:var(--ink-dim)}
-  .phone{
-    position:relative; margin:12px auto 8px auto; width:92%; max-width:420px; aspect-ratio:9/19.5;
-    border-radius:26px; background:var(--frame); border:1px solid #101522;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), inset 0 0 0 10px #0c0f18;
-    display:grid; place-items:center; overflow:hidden;
-    transition:width .45s cubic-bezier(.22,.9,.24,1), height .45s, transform .45s;
-  }
-  .screen{
-    position:relative; width:90%; height:90%; border-radius:22px; overflow:hidden;
-    background: radial-gradient(120% 120% at 50% -10%, #1c2436, #0b0f19);
-    outline:1px solid rgba(255,255,255,.04);
-    display:grid; place-items:center;
-    transition: width .45s cubic-bezier(.22,.9,.24,1),
-               height .45s cubic-bezier(.22,.9,.24,1),
-               transform .45s cubic-bezier(.22,.9,.24,1),
-               border-radius .45s;
-  }
-  .screen .label{
-    position:absolute; bottom:8px; right:10px; font-size:11px; color:var(--ink-dim); background:rgba(0,0,0,.35);
-    padding:4px 6px; border-radius:8px; border:1px solid rgba(255,255,255,.08)
-  }
-  .ghost{
-    position:absolute; inset:0; display:grid; place-items:center; opacity:.4; pointer-events:none;
-  }
-  .note{font-size:12px; color:var(--ink-dim)}
-  .disclaimer{font-size:11px; color:var(--ink-dim); margin-top:8px}
-  .hint{color:var(--warn)}
-  .footer{margin-top:8px; text-align:center; font-size:12px; color:var(--ink-dim)}
-  .btn{
-    all:unset; padding:8px 12px; border:1px solid var(--ring); border-radius:10px; cursor:pointer; color:var(--ink);
-  }
-  select.inline{
-    background:transparent; color:var(--ink); border:1px solid var(--ring); border-radius:10px; padding:6px 8px;
-  }
+  .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px}
+  .pill{display:flex; gap:8px; align-items:center; padding:6px 10px; border:1px solid var(--fab-ring); border-radius:999px}
+  .pill button{all:unset; cursor:pointer; width:18px; height:18px; line-height:18px; text-align:center; border:1px solid var(--fab-ring); border-radius:50%; color:var(--muted)}
+  .footer{font-size:12px; color:var(--muted); text-align:center; padding-bottom:84px}
 </style>
 </head>
 <body>
-  <header>
-    <div class="row">
-      <h1>iPhone Screen Compare</h1>
-      <span class="chip">Minimal • Animated • Up to 3 comparisons</span>
-    </div>
-  </header>
 
-  <div class="container grid">
-    <section class="panel">
-      <h2>Your device</h2>
-      <div class="detected">
-        <div class="dot" aria-hidden="true"></div>
-        <div>
-          <div id="detectedName"><strong>Detecting…</strong></div>
-          <div class="tagline" id="detectedDims"></div>
-          <div class="tagline">Not right?
-            <label for="overrideSel" class="muted">Override:</label>
-            <select id="overrideSel" class="inline"></select>
+  <main class="stage">
+    <div class="canvas" id="canvas">
+      <div class="hint">Simple outlines: your screen + up to 3 comparisons. Rotate to see live morphing.</div>
+      <!-- outlines injected -->
+    </div>
+  </main>
+
+  <!-- Floating action button -->
+  <button class="fab" id="fab">
+    <div class="dot" aria-hidden="true"></div>
+    <div class="txt">Screens & comparisons</div>
+  </button>
+
+  <!-- Bottom drawer -->
+  <section class="drawer" id="drawer" aria-hidden="true">
+    <div class="bar"></div>
+    <div class="wrap">
+      <div class="grid2">
+        <div class="card">
+          <h3>Your device</h3>
+          <div class="kv" id="kv">
+            <div>Detected</div><div id="detectedName" class="muted">—</div>
+            <div>Logical</div><div id="detectedDims" class="muted">—</div>
+            <div>DPR</div><div id="kvDPR" class="muted">—</div>
+            <div>Diagonal</div><div id="kvDiag" class="muted">—</div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; margin-top:10px">
+            <select id="overrideSel" class="select" aria-label="Override model"></select>
             <button class="btn" id="applyOverride">Set</button>
-            <button class="btn" id="clearOverride" title="Back to auto-detect">Clear</button>
+            <button class="btn" id="clearOverride">Clear</button>
           </div>
         </div>
-      </div>
 
-      <div class="kv">
-        <div class="muted">Viewport (inner)</div><div id="kvViewport" class="muted">—</div>
-        <div class="muted">Doc client</div><div id="kvClient" class="muted">—</div>
-        <div class="muted">VisualViewport</div><div id="kvVV" class="muted">—</div>
-        <div class="muted">Screen</div><div id="kvScreen" class="muted">—</div>
-        <div class="muted">DPR</div><div id="kvDPR" class="muted">—</div>
-        <div class="muted">Diagonal</div><div id="kvDiag" class="muted">—</div>
-      </div>
-
-      <div class="select-wrap">
-        <div class="label">Select up to 3 iPhones to compare</div>
-        <input class="search" id="search" placeholder="Search iPhone models… (e.g., ‘Pro Max’, ‘mini’)">
-        <div class="pillrow" id="selectedPills"></div>
-        <div class="models" id="modelList" role="listbox" aria-label="iPhone models"></div>
-      </div>
-
-      <div class="disclaimer">
-        We try multiple browser-reported sizes (innerWidth, documentElement, visualViewport, screen) and choose the best match with tolerance. Toolbar, PWA mode, or Display Zoom can change reported values. Use the override if needed.
-      </div>
-    </section>
-
-    <section class="stage">
-      <div class="stage-head">
-        <div class="legend">
-          <div class="key"><span class="swatch me"></span> Your screen</div>
-          <div class="key"><span class="swatch them"></span> Compare screen</div>
+        <div class="card">
+          <h3>Compare iPhones (up to 3)</h3>
+          <input class="search" id="search" placeholder="Search iPhone models…">
+          <div class="pills" id="pills"></div>
+          <div class="models" id="modelList" role="listbox" aria-label="iPhone models"></div>
         </div>
-        <div><button class="btn" id="resetBtn">Reset</button></div>
       </div>
-      <div class="canvas" id="canvas"></div>
-      <div class="footer">Tip: rotate your phone or change Display Zoom to see live updates. ✨</div>
-    </section>
-  </div>
+
+      <div class="footer">Sizes use CSS logical points + typical diagonals. Detection can vary with browser chrome or Display Zoom. Use the override if needed.</div>
+    </div>
+  </section>
 
 <script>
-// iPhone dataset
+/* ========================= Data ========================= */
 const IPHONES = [
   {id:'5-5s-SE1',   name:'iPhone 5 / 5s / SE (1st gen)',   w:320, h:568, diag:4.0},
   {id:'6-7-8-SE23', name:'iPhone 6 / 7 / 8 / SE (2nd/3rd)', w:375, h:667, diag:4.7},
@@ -215,16 +178,16 @@ const IPHONES = [
   {id:'14-15Plus',  name:'iPhone 14 / 15 Plus',              w:428, h:926, diag:6.7},
   {id:'12-13PM',    name:'iPhone 12 / 13 Pro Max',           w:428, h:926, diag:6.7},
   {id:'14-15PM',    name:'iPhone 14 / 15 Pro Max',           w:430, h:932, diag:6.7},
+  // 16 references
   {id:'16Pro',      name:'iPhone 16 Pro',                    w:402, h:874, diag:6.3},
   {id:'16ProMax',   name:'iPhone 16 Pro Max',                w:440, h:956, diag:6.9},
+  // 17 family (points ≈ 16-series), Air approx
   {id:'17',         name:'iPhone 17',                        w:402, h:874, diag:6.3},
   {id:'17Pro',      name:'iPhone 17 Pro',                    w:402, h:874, diag:6.3},
   {id:'17ProMax',   name:'iPhone 17 Pro Max',                w:440, h:956, diag:6.9},
   {id:'Air',        name:'iPhone Air',                       w:414, h:900, diag:6.5},
 ];
 
-// Heuristic buckets for alternate reported viewport sizes (toolbar, PWA, zoom)
-// Map sets of commonly-seen widths to a target logical size.
 const ALT_VIEWPORTS = [
   {alts:[[430,932],[428,926],[429,932],[431,934]], target:{w:430,h:932}, mapsTo:'14-15PM'},
   {alts:[[440,956],[439,954],[441,958]],           target:{w:440,h:956}, mapsTo:'16ProMax'},
@@ -233,6 +196,9 @@ const ALT_VIEWPORTS = [
   {alts:[[375,812],[376,814]],                     target:{w:375,h:812}, mapsTo:'X-XS-11Pro'},
 ];
 
+/* ========================= Helpers ========================= */
+const $  = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
 function normPair(a,b){ const w=Math.min(a,b), h=Math.max(a,b); return [Math.round(w), Math.round(h)]; }
 function getAllViewportCandidates(){
   const pairs = [];
@@ -240,29 +206,21 @@ function getAllViewportCandidates(){
   push(window.innerWidth, window.innerHeight);
   push(document.documentElement.clientWidth, document.documentElement.clientHeight);
   if (window.visualViewport) push(window.visualViewport.width, window.visualViewport.height);
-  // On iOS, screen.width/height are portrait-based CSS px; include for completeness
   push(screen.width, screen.height);
-  // De-duplicate
   const uniq = [...new Set(pairs.map(p=>p.join('x')))].map(s=>s.split('x').map(n=>+n));
   return uniq;
 }
-
-// Try to map alternate sizes to known logical buckets
 function coerceToKnownLogical(w,h){
-  // Direct match first
   const direct = IPHONES.find(m=>(m.w===w && m.h===h));
   if (direct) return {w,h,id:direct.id};
-  // Try ALT_VIEWPORTS within a tolerance
   for (const bucket of ALT_VIEWPORTS){
     for (const [aw,ah] of bucket.alts){
       if (Math.abs(aw-w)<=6 && Math.abs(ah-h)<=10){
-        // Return the mapped "target" logical points
         const m = IPHONES.find(x=>x.id===bucket.mapsTo);
         if (m) return {w:m.w, h:m.h, id:m.id};
       }
     }
   }
-  // Fallback: round to nearest even and try again
   const rw = Math.round(w/2)*2, rh = Math.round(h/2)*2;
   const m2 = IPHONES.reduce((best,cur)=>{
     const s = Math.abs(cur.w - rw) + Math.abs(cur.h - rh);
@@ -270,10 +228,8 @@ function coerceToKnownLogical(w,h){
   }, null);
   return {w: rw, h: rh, id: m2?.m?.id || null};
 }
-
 function getDetectedLogical(){
   const cands = getAllViewportCandidates();
-  // Choose the candidate that best matches any known model after coercion.
   let best=null;
   for (const [w,h] of cands){
     const coerced = coerceToKnownLogical(w,h);
@@ -284,13 +240,11 @@ function getDetectedLogical(){
     }
   }
   if (best) return best;
-  // Fallback to innerWidth/Height coerced
   const [iw,ih] = normPair(window.innerWidth, window.innerHeight);
   const fallback = coerceToKnownLogical(iw,ih);
   const model = IPHONES.find(m=>m.w===fallback.w && m.h===fallback.h) || null;
   return {w:fallback.w, h:fallback.h, model, score:999};
 }
-
 function diagonalInchesFromLogical(w, h, baseModel) {
   if (baseModel && baseModel.diag) return baseModel.diag;
   const ref = {w:390, h:844, diag:6.1};
@@ -298,9 +252,24 @@ function diagonalInchesFromLogical(w, h, baseModel) {
   return +(ref.diag * (d / dRef)).toFixed(2);
 }
 
-const $ = sel => document.querySelector(sel);
-const state = { me:{name:'This device', w:0,h:0,diag:0, matched:null}, selected:[], overrideId:null };
+/* ========================= State ========================= */
+const state = {
+  me: {name:'This device', w:0, h:0, diag:0, matched: null},
+  selected: [],
+  overrideId: null
+};
 
+/* ========================= Drawer / FAB ========================= */
+const fab = $('#fab');
+const drawer = $('#drawer');
+function toggleDrawer(force){
+  const open = typeof force==='boolean' ? force : !drawer.classList.contains('open');
+  drawer.classList.toggle('open', open);
+  drawer.setAttribute('aria-hidden', String(!open));
+}
+fab.addEventListener('click', ()=> toggleDrawer());
+
+/* ========================= UI: Lists & Pills ========================= */
 function populateOverride(){
   const sel = $('#overrideSel');
   sel.innerHTML = '';
@@ -310,40 +279,59 @@ function populateOverride(){
     sel.appendChild(opt);
   });
 }
-
-function applyOverride(id){
-  const m = IPHONES.find(x=>x.id===id);
-  if (!m) return;
-  state.overrideId = id;
-  state.me = { name:`Your iPhone (${m.name})`, w:m.w, h:m.h, diag:m.diag, matched:m };
-  $('#detectedName').innerHTML = `<strong>${state.me.name} (override)</strong>`;
-  $('#detectedDims').textContent = `${m.w}×${m.h} logical points`;
-  $('#kvDiag').textContent = `${m.diag}"`;
-  renderCanvas();
-}
-
-function clearOverride(){
-  state.overrideId = null;
-  updateDetection();
-}
-
-function updateDetection(){
-  // Metrics panel
-  const cands = getAllViewportCandidates();
-  const vv = (window.visualViewport? [window.visualViewport.width, window.visualViewport.height] : ['—','—']).join('×');
-  $('#kvViewport').textContent = `${window.innerWidth}×${window.innerHeight}`;
-  $('#kvClient').textContent = `${document.documentElement.clientWidth}×${document.documentElement.clientHeight}`;
-  $('#kvVV').textContent = vv;
-  $('#kvScreen').textContent = `${screen.width}×${screen.height}`;
-  $('#kvDPR').textContent = `${window.devicePixelRatio||1}`;
-
-  let detected;
-  if (state.overrideId){
-    const m = IPHONES.find(x=>x.id===state.overrideId);
-    detected = {w:m.w,h:m.h,model:m};
-  } else {
-    detected = getDetectedLogical();
+function renderModelList(filter=''){
+  const box = $('#modelList'); box.innerHTML = '';
+  const q = filter.trim().toLowerCase();
+  const items = IPHONES.filter(m => !state.selected.includes(m.id))
+                       .filter(m => !q || m.name.toLowerCase().includes(q));
+  if (!items.length){
+    const empty = document.createElement('div'); empty.className='model'; empty.style.color='var(--muted)';
+    empty.textContent = 'No matches';
+    box.appendChild(empty); return;
   }
+  items.forEach(m=>{
+    const el = document.createElement('div'); el.className='model';
+    el.innerHTML = `<div>${m.name}<br><small>${m.w}×${m.h} • ${m.diag}"</small></div>
+                    <button class="btn">Add</button>`;
+    el.querySelector('button').onclick = ()=>{
+      if (state.selected.length >= 3) { alert('You can compare up to 3 iPhones.'); return; }
+      state.selected.push(m.id);
+      renderPills(); renderModelList($('#search').value); renderOutlines();
+    };
+    box.appendChild(el);
+  });
+}
+function renderPills(){
+  const row = $('#pills'); row.innerHTML = '';
+  state.selected.forEach(id=>{
+    const m = IPHONES.find(x=>x.id===id);
+    const p = document.createElement('div'); p.className='pill';
+    p.innerHTML = `<span>${m.name}</span><button>&times;</button>`;
+    p.querySelector('button').onclick = ()=>{
+      state.selected = state.selected.filter(x=>x!==id);
+      renderPills(); renderModelList($('#search').value); renderOutlines();
+    };
+    row.appendChild(p);
+  });
+}
+$('#search').addEventListener('input', e=> renderModelList(e.target.value));
+$('#applyOverride').addEventListener('click', ()=>{
+  const id = $('#overrideSel').value;
+  const m = IPHONES.find(x=>x.id===id); if (!m) return;
+  state.overrideId = id;
+  state.me = {name:`Your iPhone (${m.name})`, w:m.w, h:m.h, diag:m.diag, matched:m};
+  updateInfoPanel(); renderOutlines();
+});
+$('#clearOverride').addEventListener('click', ()=>{
+  state.overrideId = null; updateDetection();
+});
+
+/* ========================= Detection + Info ========================= */
+function updateDetection(){
+  const vv = (window.visualViewport? [window.visualViewport.width, window.visualViewport.height] : ['—','—']).join('×');
+  const detected = state.overrideId
+    ? (()=>{ const m = IPHONES.find(x=>x.id===state.overrideId); return {w:m.w,h:m.h,model:m}; })()
+    : getDetectedLogical();
   const diag = diagonalInchesFromLogical(detected.w, detected.h, detected.model);
 
   state.me = {
@@ -351,149 +339,93 @@ function updateDetection(){
     w: detected.w, h: detected.h, diag:+diag.toFixed(2), matched: detected.model
   };
 
-  $('#detectedName').innerHTML = `<strong>${state.me.name}</strong>`;
+  // info panel basics
+  $('#detectedName').textContent = state.me.name + (state.overrideId ? ' (override)' : '');
   $('#detectedDims').textContent = `${state.me.w}×${state.me.h} logical points`;
+  $('#kvDPR').textContent = `${window.devicePixelRatio||1}`;
   $('#kvDiag').textContent = `${state.me.diag}" (approx)`;
 
-  renderCanvas();
+  renderOutlines();
+}
+function updateInfoPanel(){ // when override applied without redetect
+  $('#detectedName').textContent = state.me.name + (state.overrideId ? ' (override)' : '');
+  $('#detectedDims').textContent = `${state.me.w}×${state.me.h} logical points`;
+  $('#kvDPR').textContent = `${window.devicePixelRatio||1}`;
+  $('#kvDiag').textContent = `${state.me.diag}"`;
 }
 
-/* List & pills */
-function renderModelList(filter='') {
-  const box = $('#modelList');
-  box.innerHTML = '';
-  const q = filter.trim().toLowerCase();
-  const items = IPHONES.filter(m => !state.selected.includes(m.id))
-                       .filter(m => !q || m.name.toLowerCase().includes(q));
-  if (items.length === 0) {
-    const empty = document.createElement('div');
-    empty.className='model muted';
-    empty.textContent='No matches';
-    box.appendChild(empty);
-    return;
+/* ========================= Outline Renderer ========================= */
+/*
+  We draw your screen (“me”) + up to 3 selected models as simple perimeter rectangles.
+  Scaling uses diagonal inches: the largest diagonal in view is scaled to fit the canvas,
+  others scale proportionally. Aspect ratios use logical points (w × h).
+*/
+function renderOutlines(){
+  const canvas = $('#canvas');
+  // Remove old
+  $$('.outline').forEach(n=>n.remove());
+
+  const models = [ {kind:'me',   m:state.me},
+                   ...state.selected.map((id,i)=>({kind:'c'+(i+1), m:IPHONES.find(x=>x.id===id)})) ];
+
+  if (!models.length) return;
+
+  // Find the largest diagonal to fit
+  const maxDiag = Math.max(...models.map(x=>x.m.diag || 0.01));
+  // canvas inner padding
+  const pad = 28;
+  const maxW = canvas.clientWidth  - pad*2;
+  const maxH = canvas.clientHeight - pad*2;
+
+  // Helper to compute width/height (px) for a model scaled by diagonal ratio
+  function sizeFor(model){
+    // Normalize base: use its logical aspect, then scale by diag ratio vs max
+    const aspect = model.w / model.h;
+    // Make a reference rectangle for the "maxDiag" model: fit its screen in canvas
+    // Then scale this model by (model.diag / maxDiag)
+    // First, compute the fitted size for the rectangle representing aspect of the "largest" model.
+    // We'll actually compute once for the largest's aspect; but different models have diff aspect.
+    // Simpler: fit the current model's aspect directly into canvas, then multiply by diagRatio compared to itself @ max.
+    // So we need a common baseline. We'll fit a virtual 1×1 square for max, but that breaks aspect. Better:
+    // Approach: pick a reference logical rectangle of size equal to its own logical points; scale factor S so that
+    // max model (by diag) fits maxW×maxH. For another model, multiply by (model.diag / maxDiag).
+    // So first compute ref fit for a "unit" phone box (we'll use the max model's logical aspect for sizing S).
+    return {aspect};
   }
-  items.forEach(m=>{
-    const div = document.createElement('div');
-    div.className='model'; div.role='option';
-    div.innerHTML = `<div>${m.name}<br><small>${m.w}×${m.h} • ${m.diag}"</small></div>
-                     <button class="btn" aria-label="Add ${m.name}">Add</button>`;
-    div.querySelector('button').onclick = ()=>{
-      if (state.selected.length >= 3) { alert('You can compare up to 3 iPhones.'); return; }
-      state.selected.push(m.id);
-      renderPills(); renderModelList($('#search').value); renderCanvas();
-    };
-    box.appendChild(div);
+
+  // Determine scale for the max model so it fits the canvas:
+  const maxModel = models.find(x=>x.m.diag===maxDiag)?.m || models[0].m;
+  const sMax = Math.min(maxW/maxModel.w, maxH/maxModel.h);
+  // Now each model's scale:
+  function dims(m){
+    const ratio = (m.diag / maxDiag);
+    const s = sMax * ratio;
+    return { w: m.w * s, h: m.h * s };
+  }
+
+  models.forEach(({kind,m})=>{
+    if (!m || !m.w) return;
+    const {w,h} = dims(m);
+    const el = document.createElement('div');
+    el.className = `outline ${kind}`;
+    el.style.width = `${w}px`;
+    el.style.height = `${h}px`;
+    const tag = document.createElement('div');
+    tag.className = 'tag';
+    tag.textContent = `${m.name.replace('iPhone ','')} • ${m.diag}"`;
+    el.appendChild(tag);
+    canvas.appendChild(el);
   });
 }
-function renderPills() {
-  const row = $('#selectedPills'); row.innerHTML = '';
-  state.selected.forEach(id=>{
-    const m = IPHONES.find(x=>x.id===id);
-    const pill = document.createElement('div');
-    pill.className='pill';
-    pill.innerHTML = `<span>${m.name}</span><button aria-label="Remove ${m.name}">×</button>`;
-    pill.querySelector('button').onclick = ()=>{
-      state.selected = state.selected.filter(x=>x!==id);
-      renderPills(); renderModelList($('#search').value); renderCanvas();
-    };
-    row.appendChild(pill);
-  });
-}
 
-/* Visualizer (unchanged core) */
-function scaleFit(baseW, baseH, maxW, maxH) {
-  const s = Math.min(maxW/baseW, maxH/baseH);
-  return { w: baseW*s, h: baseH*s, s };
-}
-function makePhoneDOM() {
-  const phone = document.createElement('div');
-  phone.className='phone';
-  const screen = document.createElement('div');
-  screen.className='screen';
-  phone.appendChild(screen);
-  return { phone, screen };
-}
-function renderCard(compareModel) {
-  const me = state.me;
-  const isLarger = compareModel.diag > me.diag + 0.01;
-  const card = document.createElement('div');
-  card.className='viz-card';
-  card.innerHTML = `<div class="viz-head"><h3>${compareModel.name}</h3>
-                    <small>${compareModel.w}×${compareModel.h} • ${compareModel.diag}"</small></div>`;
-
-  const area = document.createElement('div');
-  Object.assign(area.style, {position:'relative', height:'320px', width:'100%', display:'grid', placeItems:'center', overflow:'hidden'});
-
-  const { phone: basePhone, screen: baseScreen } = makePhoneDOM();
-  const { phone: overlayPhone, screen: overlayScreen } = makePhoneDOM();
-
-  baseScreen.style.background = isLarger
-    ? 'linear-gradient(180deg,#b2b8ff,#6f7bff)'
-    : 'linear-gradient(180deg,#91f2ff,#1ed0ff)';
-  overlayScreen.style.background = isLarger
-    ? 'linear-gradient(180deg,#91f2ff,#1ed0ff)'
-    : 'linear-gradient(180deg,#b2b8ff,#6f7bff)';
-
-  const baseLabel = document.createElement('div'); baseLabel.className='label';
-  baseLabel.textContent = isLarger ? `${compareModel.name}` : `${me.name}`;
-  const overlayLabel = document.createElement('div'); overlayLabel.className='label';
-  overlayLabel.textContent = isLarger ? `${me.name}` : `${compareModel.name}`;
-  baseScreen.appendChild(baseLabel); overlayScreen.appendChild(overlayLabel);
-
-  const BASE_MAX = { w: 420, h: 280 };
-  function sizePhoneFor(model, maxW, maxH) {
-    const fitted = scaleFit(model.w, model.h, maxW*0.90, maxH*0.90);
-    const phoneW = fitted.w / 0.90, phoneH = fitted.h / 0.90;
-    return { phoneW, phoneH, screenW:fitted.w, screenH:fitted.h };
-  }
-  const baseModel = isLarger ? compareModel : me;
-  const baseSize  = sizePhoneFor(baseModel, BASE_MAX.w, BASE_MAX.h);
-  Object.assign(basePhone.style, { width: baseSize.phoneW+'px', height: baseSize.phoneH+'px' });
-  Object.assign(baseScreen.style, { width: baseSize.screenW+'px', height: baseSize.screenH+'px' });
-
-  const ratio = (isLarger ? me.diag / compareModel.diag : compareModel.diag / me.diag);
-  const overlayPhoneW = Math.max(baseSize.phoneW * ratio, 24);
-  const overlayPhoneH = Math.max(baseSize.phoneH * ratio, 24);
-  const overlayScreenW = Math.max(baseSize.screenW * ratio, 16);
-  const overlayScreenH = Math.max(baseSize.screenH * ratio, 16);
-  Object.assign(overlayPhone.style, { position:'absolute', inset:'0', margin:'auto', width:overlayPhoneW+'px', height:overlayPhoneH+'px', transformOrigin:'center center' });
-  Object.assign(overlayScreen.style, { width:overlayScreenW+'px', height:overlayScreenH+'px' });
-
-  if (!isLarger) basePhone.style.opacity = 0.35; else overlayPhone.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,.06)';
-
-  area.appendChild(basePhone); area.appendChild(overlayPhone);
-  const note = document.createElement('div'); note.className='note';
-  note.innerHTML = isLarger
-    ? `Larger than your screen by ~<strong>${Math.round((compareModel.diag/me.diag - 1)*100)}%</strong> (diagonal).`
-    : `Smaller than your screen by ~<strong>${Math.round((1 - compareModel.diag/me.diag)*100)}%</strong> (diagonal).`;
-  card.appendChild(area); card.appendChild(note);
-  return card;
-}
-
-function renderCanvas() {
-  const c = $('#canvas'); c.innerHTML = '';
-  if (state.selected.length === 0) {
-    const empty = document.createElement('div');
-    empty.className='viz-card';
-    empty.innerHTML = `<div class="viz-head"><h3>How it works</h3><small>Pick models to compare</small></div>
-      <div class="ghost"><div style="text-align:center; max-width:420px; color:var(--ink-dim)">
-      Select iPhones on the left. Larger compare screens will envelop your screen; smaller ones will be shown relative to your actual screen.</div></div>`;
-    c.appendChild(empty); return;
-  }
-  state.selected.map(id => IPHONES.find(m=>m.id===id)).forEach(m => c.appendChild(renderCard(m)));
-}
-
-/* Events */
-document.getElementById('search').addEventListener('input', e=> renderModelList(e.target.value));
-document.getElementById('resetBtn').addEventListener('click', ()=>{
-  state.selected = []; renderPills(); renderModelList(document.getElementById('search').value); renderCanvas();
+/* ========================= Events ========================= */
+window.addEventListener('resize', ()=>{
+  clearTimeout(window.__rT);
+  window.__rT = setTimeout(()=>{ updateDetection(); }, 120);
 });
-document.getElementById('applyOverride').addEventListener('click', ()=> applyOverride(document.getElementById('overrideSel').value));
-document.getElementById('clearOverride').addEventListener('click', clearOverride);
-window.addEventListener('resize', ()=>{ clearTimeout(window.__resizeTimer); window.__resizeTimer = setTimeout(updateDetection, 120); });
 window.addEventListener('orientationchange', ()=> setTimeout(updateDetection, 250));
 
-/* Init */
+/* ========================= Init ========================= */
 populateOverride();
 renderModelList();
 renderPills();
