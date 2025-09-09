@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>iPhone Screen Compare</title>
+<meta name="theme-color" content="#0f1115">
+<meta property="og:title" content="iPhone Screen Compare">
+<meta property="og:description" content="Compare your iPhone’s screen to up to 3 other models — with live, morphing visuals.">
+<style>
+  :root{
+    --bg: #0f1115;
+    --card: #141823;
+    --ink: #e8ecf2;
+    --ink-dim:#aab2c0;
+    --accent:#6ee7ff;
+    --ring:#2a3142;
+    --ok:#5cf5b1;
+    --warn:#ffdd57;
+    --radius:18px;
+    --gap:14px;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+    --frame:#1c2233;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text",
+      Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  }
+  header{
+    position:sticky; top:0; z-index:5; backdrop-filter:saturate(180%) blur(8px);
+    background:color-mix(in oklab, var(--bg) 70%, black 30% / 20%);
+    border-bottom:1px solid var(--ring); padding:16px 12px;
+  }
+  header .row{
+    max-width:1100px; margin:0 auto; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  }
+  h1{font-size:16px; margin:0; letter-spacing:.2px; font-weight:600; opacity:.95}
+  .chip{padding:8px 10px; border:1px solid var(--ring); border-radius:999px; color:var(--ink-dim)}
+  .container{max-width:1100px; margin:16px auto; padding:0 12px}
+  .grid{display:grid; gap:var(--gap); grid-template-columns: 320px 1fr}
+  @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
+
+  /* Left column (detected device + picker) */
+  .panel{
+    background:var(--card); border:1px solid var(--ring);
+    border-radius:var(--radius); padding:16px; box-shadow:var(--shadow);
+  }
+  .panel h2{font-size:14px; margin:0 0 8px 0; font-weight:600; color:var(--ink)}
+  .muted{color:var(--ink-dim)}
+  .kv{display:grid; grid-template-columns:auto 1fr; gap:2px 10px; margin-top:8px}
+  .tagline{font-size:12px; color:var(--ink-dim); margin-top:4px}
+  .detected{
+    display:flex; align-items:center; gap:12px; padding:12px; border:1px dashed var(--ring);
+    border-radius:12px; margin-bottom:12px;
+  }
+  .dot{width:8px; height:8px; border-radius:50%; background:var(--ok)}
+  .select-wrap{display:flex; flex-direction:column; gap:10px; margin-top:12px}
+  .search{
+    width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--ring);
+    background:transparent; color:var(--ink);
+  }
+  .label{font-size:12px; color:var(--ink-dim); margin:2px 0}
+  .models{
+    max-height:260px; overflow:auto; border:1px solid var(--ring); border-radius:12px;
+  }
+  .model{
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+    padding:10px 12px; cursor:pointer; transition:.2s background;
+  }
+  .model:hover{background:rgba(255,255,255,.03)}
+  .model small{color:var(--ink-dim)}
+  .pillrow{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px}
+  .pill{
+    display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px;
+    background:rgba(255,255,255,.06); border:1px solid var(--ring)
+  }
+  .pill button{
+    all:unset; cursor:pointer; width:18px; height:18px; line-height:18px;
+    text-align:center; border-radius:50%; border:1px solid var(--ring);
+    color:var(--ink-dim)
+  }
+
+  /* Right column (visualizer) */
+  .stage{
+    background:var(--card); border:1px solid var(--ring);
+    border-radius:var(--radius); padding:16px; min-height:480px; box-shadow:var(--shadow);
+    display:grid; gap:var(--gap);
+  }
+  .stage-head{display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap}
+  .legend{display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+  .legend .key{display:flex; align-items:center; gap:6px; color:var(--ink-dim); font-size:12px}
+  .swatch{width:12px; height:12px; border-radius:3px}
+  .swatch.me{background:linear-gradient(180deg,#91f2ff,#1ed0ff)}
+  .swatch.them{background:linear-gradient(180deg,#b2b8ff,#6f7bff)}
+  .canvas{
+    position:relative; width:100%; border:1px dashed var(--ring); border-radius:16px;
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:var(--gap);
+    padding:12px; min-height:360px; align-content:start;
+  }
+  .viz-card{
+    position:relative; border:1px solid var(--ring); border-radius:14px; padding:12px;
+    background:rgba(255,255,255,.02); min-height:260px; overflow:hidden;
+  }
+  .viz-head{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px}
+  .viz-head h3{font-size:13px; margin:0; font-weight:600}
+  .viz-head small{color:var(--ink-dim)}
+  .phone{
+    position:relative; margin:12px auto 8px auto; width:92%; max-width:420px; aspect-ratio:9/19.5;
+    border-radius:26px; background:var(--frame); border:1px solid #101522;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.03), inset 0 0 0 10px #0c0f18;
+    display:grid; place-items:center; overflow:hidden;
+    transition:width .45s cubic-bezier(.22,.9,.24,1), height .45s, transform .45s;
+  }
+  .screen{
+    position:relative; width:90%; height:90%; border-radius:22px; overflow:hidden;
+    background: radial-gradient(120% 120% at 50% -10%, #1c2436, #0b0f19);
+    outline:1px solid rgba(255,255,255,.04);
+    display:grid; place-items:center;
+    transition: width .45s cubic-bezier(.22,.9,.24,1),
+               height .45s cubic-bezier(.22,.9,.24,1),
+               transform .45s cubic-bezier(.22,.9,.24,1),
+               border-radius .45s;
+  }
+  .screen .label{
+    position:absolute; bottom:8px; right:10px; font-size:11px; color:var(--ink-dim); background:rgba(0,0,0,.35);
+    padding:4px 6px; border-radius:8px; border:1px solid rgba(255,255,255,.08)
+  }
+  .ghost{
+    position:absolute; inset:0; display:grid; place-items:center; opacity:.4; pointer-events:none;
+  }
+  .note{font-size:12px; color:var(--ink-dim)}
+  .disclaimer{font-size:11px; color:var(--ink-dim); margin-top:8px}
+  .hint{color:var(--warn)}
+  .footer{margin-top:8px; text-align:center; font-size:12px; color:var(--ink-dim)}
+  .btn{
+    all:unset; padding:8px 12px; border:1px solid var(--ring); border-radius:10px; cursor:pointer; color:var(--ink);
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="row">
+      <h1>iPhone Screen Compare</h1>
+      <span class="chip">Minimal • Animated • Up to 3 comparisons</span>
+    </div>
+  </header>
+
+  <div class="container grid">
+    <!-- LEFT: detection + picker -->
+    <section class="panel">
+      <h2>Your device</h2>
+      <div class="detected">
+        <div class="dot" aria-hidden="true"></div>
+        <div>
+          <div id="detectedName"><strong>Detecting…</strong></div>
+          <div class="tagline" id="detectedDims"></div>
+        </div>
+      </div>
+
+      <div class="kv">
+        <div class="muted">Viewport</div><div id="kvViewport" class="muted">—</div>
+        <div class="muted">DPR</div><div id="kvDPR" class="muted">—</div>
+        <div class="muted">Diagonal</div><div id="kvDiag" class="muted">—</div>
+      </div>
+
+      <div class="select-wrap">
+        <div class="label">Select up to 3 iPhones to compare</div>
+        <input class="search" id="search" placeholder="Search iPhone models… (e.g., ‘Pro Max’, ‘mini’)">
+        <div class="pillrow" id="selectedPills"></div>
+        <div class="models" id="modelList" role="listbox" aria-label="iPhone models"></div>
+      </div>
+
+      <div class="disclaimer">
+        Sizes use Apple’s “logical points” (CSS pixels) and typical screen diagonals. Detection is a best guess
+        based on your viewport and may not be perfect (Private Browsing / Display Zoom can affect it).
+      </div>
+    </section>
+
+    <!-- RIGHT: visualizer -->
+    <section class="stage">
+      <div class="stage-head">
+        <div class="legend">
+          <div class="key"><span class="swatch me"></span> Your screen</div>
+          <div class="key"><span class="swatch them"></span> Compare screen</div>
+        </div>
+        <div>
+          <button class="btn" id="resetBtn">Reset</button>
+        </div>
+      </div>
+
+      <div class="canvas" id="canvas">
+      </div>
+
+      <div class="footer">
+        Tip: rotate your phone or change Display Zoom to see live updates. ✨
+      </div>
+    </section>
+  </div>
+
+<script>
+// iPhone dataset — logical point sizes (portrait) + diagonal inches.
+// Logical points for brand-new models approximate nearest prior generation of same class;
+// diagonals are from Apple product pages.
+const IPHONES = [
+  // Legacy & popular buckets
+  {id:'5-5s-SE1',   name:'iPhone 5 / 5s / SE (1st gen)',   w:320, h:568, diag:4.0},
+  {id:'6-7-8-SE23', name:'iPhone 6 / 7 / 8 / SE (2nd/3rd)', w:375, h:667, diag:4.7},
+  {id:'6P-7P-8P',   name:'iPhone 6 Plus / 7 Plus / 8 Plus', w:414, h:736, diag:5.5},
+  {id:'X-XS-11Pro', name:'iPhone X / XS / 11 Pro',          w:375, h:812, diag:5.8},
+  {id:'XR-11',      name:'iPhone XR / 11',                   w:414, h:896, diag:6.1},
+  {id:'12mini',     name:'iPhone 12 / 13 mini',              w:360, h:780, diag:5.4},
+  {id:'12-13-14-15-16',name:'iPhone 12 / 13 / 14 / 15 / 16', w:390, h:844, diag:6.1},
+  {id:'13Pro',      name:'iPhone 13 Pro',                    w:390, h:844, diag:6.1},
+  {id:'14-15Pro',   name:'iPhone 14 / 15 Pro',               w:393, h:852, diag:6.1},
+  {id:'14-15Plus',  name:'iPhone 14 / 15 Plus',              w:428, h:926, diag:6.7},
+  {id:'12-13PM',    name:'iPhone 12 / 13 Pro Max',           w:428, h:926, diag:6.7},
+  {id:'14-15PM',    name:'iPhone 14 / 15 Pro Max',           w:430, h:932, diag:6.7},
+
+  // iPhone 16 family (reference for logical-point sizing)
+  {id:'16Pro',      name:'iPhone 16 Pro',                    w:402, h:874, diag:6.3},
+  {id:'16ProMax',   name:'iPhone 16 Pro Max',                w:440, h:956, diag:6.9},
+
+  // iPhone 17 family (diagonals per Apple; logical points ≈ 16-series equivalents)
+  {id:'17',         name:'iPhone 17',                        w:402, h:874, diag:6.3},
+  {id:'17Pro',      name:'iPhone 17 Pro',                    w:402, h:874, diag:6.3},
+  {id:'17ProMax',   name:'iPhone 17 Pro Max',                w:440, h:956, diag:6.9},
+
+  // iPhone Air — 6.5″ per Apple; logical points approximated to 414×900 for visualization
+  {id:'Air',        name:'iPhone Air',                       w:414, h:900, diag:6.5},
+];
+
+/* Detection of current device */
+function getViewportLogical() {
+  const w = Math.min(window.innerWidth, window.innerHeight);
+  const h = Math.max(window.innerWidth, window.innerHeight);
+  return {w, h};
+}
+function diagonalInchesFromLogical(w, h, baseModel) {
+  if (baseModel && baseModel.diag) return baseModel.diag;
+  const ref = {w:390, h:844, diag:6.1};
+  const d  = Math.hypot(w, h);
+  const dRef = Math.hypot(ref.w, ref.h);
+  return +(ref.diag * (d / dRef)).toFixed(2);
+}
+function bestMatchModel(w, h) {
+  let best = null, bestScore = Infinity;
+  IPHONES.forEach(m=>{
+    const s1 = Math.abs(m.w - w) + Math.abs(m.h - h);
+    const s2 = Math.abs(m.w - h) + Math.abs(m.h - w);
+    const score = Math.min(s1, s2);
+    if (score < bestScore) { bestScore = score; best = m; }
+  });
+  return {model: best, score: bestScore};
+}
+
+/* DOM helpers */
+const $ = sel => document.querySelector(sel);
+
+/* State */
+const state = {
+  me: { name: 'This device', w:0, h:0, diag:0, matched: null },
+  selected: []
+};
+
+/* UI: models list & pills */
+function renderModelList(filter='') {
+  const box = document.getElementById('modelList');
+  box.innerHTML = '';
+  const q = filter.trim().toLowerCase();
+  const items = IPHONES.filter(m => !state.selected.includes(m.id))
+                       .filter(m => !q || m.name.toLowerCase().includes(q));
+  if (items.length === 0) {
+    const empty = document.createElement('div');
+    empty.className='model muted';
+    empty.textContent='No matches';
+    box.appendChild(empty);
+    return;
+  }
+  items.forEach(m=>{
+    const div = document.createElement('div');
+    div.className='model';
+    div.role='option';
+    div.innerHTML = `<div>${m.name}<br><small>${m.w}×${m.h} • ${m.diag}"</small></div>
+                     <button class="btn" aria-label="Add ${m.name}">Add</button>`;
+    div.querySelector('button').onclick = ()=>{
+      if (state.selected.length >= 3) { alert('You can compare up to 3 iPhones.'); return; }
+      state.selected.push(m.id);
+      renderPills();
+      renderModelList(document.getElementById('search').value);
+      renderCanvas();
+    };
+    box.appendChild(div);
+  });
+}
+function renderPills() {
+  const row = document.getElementById('selectedPills');
+  row.innerHTML = '';
+  state.selected.forEach(id=>{
+    const m = IPHONES.find(x=>x.id===id);
+    const pill = document.createElement('div');
+    pill.className='pill';
+    pill.innerHTML = `<span>${m.name}</span><button aria-label="Remove ${m.name}">×</button>`;
+    pill.querySelector('button').onclick = ()=>{
+      state.selected = state.selected.filter(x=>x!==id);
+      renderPills();
+      renderModelList(document.getElementById('search').value);
+      renderCanvas();
+    };
+    row.appendChild(pill);
+  });
+}
+
+/* Visualizer */
+function scaleFit(baseW, baseH, maxW, maxH) {
+  const s = Math.min(maxW/baseW, maxH/baseH);
+  return { w: baseW*s, h: baseH*s, s };
+}
+function makePhoneDOM() {
+  const phone = document.createElement('div');
+  phone.className='phone';
+  const screen = document.createElement('div');
+  screen.className='screen';
+  phone.appendChild(screen);
+  return { phone, screen };
+}
+function renderCard(compareModel) {
+  const me = state.me;
+  const isLarger = compareModel.diag > me.diag + 0.01;
+  const card = document.createElement('div');
+  card.className='viz-card';
+
+  card.innerHTML = `
+    <div class="viz-head">
+      <h3>${compareModel.name}</h3>
+      <small>${compareModel.w}×${compareModel.h} • ${compareModel.diag}"</small>
+    </div>
+  `;
+
+  const area = document.createElement('div');
+  area.style.position='relative';
+  area.style.height='320px';
+  area.style.width='100%';
+  area.style.display='grid';
+  area.style.placeItems='center';
+  area.style.overflow='hidden';
+
+  const { phone: basePhone, screen: baseScreen } = makePhoneDOM();
+  const { phone: overlayPhone, screen: overlayScreen } = makePhoneDOM();
+
+  baseScreen.style.background = isLarger
+    ? 'linear-gradient(180deg,#b2b8ff,#6f7bff)'
+    : 'linear-gradient(180deg,#91f2ff,#1ed0ff)';
+  overlayScreen.style.background = isLarger
+    ? 'linear-gradient(180deg,#91f2ff,#1ed0ff)'
+    : 'linear-gradient(180deg,#b2b8ff,#6f7bff)';
+
+  const baseLabel = document.createElement('div');
+  baseLabel.className='label';
+  baseLabel.textContent = isLarger ? `${compareModel.name}` : `${me.name}`;
+  const overlayLabel = document.createElement('div');
+  overlayLabel.className='label';
+  overlayLabel.textContent = isLarger ? `${me.name}` : `${compareModel.name}`;
+  baseScreen.appendChild(baseLabel);
+  overlayScreen.appendChild(overlayLabel);
+
+  const BASE_MAX = { w: 420, h: 280 };
+
+  function sizePhoneFor(model, maxW, maxH) {
+    const fitted = scaleFit(model.w, model.h, maxW*0.90, maxH*0.90);
+    const phoneW = fitted.w / 0.90;
+    const phoneH = fitted.h / 0.90;
+    return { phoneW, phoneH, screenW:fitted.w, screenH:fitted.h };
+  }
+
+  const baseModel = isLarger ? compareModel : me;
+  const baseSize  = sizePhoneFor(baseModel, BASE_MAX.w, BASE_MAX.h);
+
+  Object.assign(basePhone.style, {
+    width: baseSize.phoneW+'px',
+    height: baseSize.phoneH+'px',
+  });
+  Object.assign(baseScreen.style, {
+    width: baseSize.screenW+'px',
+    height: baseSize.screenH+'px',
+  });
+
+  const ratio = (isLarger ? me.diag / compareModel.diag : compareModel.diag / me.diag);
+  const overlayPhoneW = Math.max(baseSize.phoneW * ratio, 24);
+  const overlayPhoneH = Math.max(baseSize.phoneH * ratio, 24);
+  const overlayScreenW = Math.max(baseSize.screenW * ratio, 16);
+  const overlayScreenH = Math.max(baseSize.screenH * ratio, 16);
+
+  Object.assign(overlayPhone.style, {
+    position:'absolute', inset:'0', margin:'auto',
+    width: overlayPhoneW+'px',
+    height: overlayPhoneH+'px',
+    transformOrigin:'center center'
+  });
+  Object.assign(overlayScreen.style, {
+    width: overlayScreenW+'px',
+    height: overlayScreenH+'px',
+  });
+
+  if (!isLarger) {
+    basePhone.style.opacity = 0.35;
+  } else {
+    overlayPhone.style.boxShadow = 'inset 0 0 0 1px rgba(255,255,255,.06)';
+  }
+
+  area.appendChild(basePhone);
+  area.appendChild(overlayPhone);
+
+  const note = document.createElement('div');
+  note.className='note';
+  note.innerHTML = isLarger
+    ? `Larger than your screen by ~<strong>${Math.round((compareModel.diag/me.diag - 1)*100)}%</strong> (diagonal).`
+    : `Smaller than your screen by ~<strong>${Math.round((1 - compareModel.diag/me.diag)*100)}%</strong> (diagonal).`;
+
+  card.appendChild(area);
+  card.appendChild(note);
+  return card;
+}
+
+function renderCanvas() {
+  const c = document.getElementById('canvas');
+  c.innerHTML = '';
+  if (state.selected.length === 0) {
+    const empty = document.createElement('div');
+    empty.className='viz-card';
+    empty.innerHTML = `
+      <div class="viz-head"><h3>How it works</h3><small>Pick models to compare</small></div>
+      <div class="ghost">
+        <div style="text-align:center; max-width:420px; color:var(--ink-dim)">
+          Select iPhones on the left. Larger compare screens will envelop your screen;
+          smaller ones will be shown relative to your actual screen. Smooth morphing happens
+          as you add or remove models or rotate your phone.
+        </div>
+      </div>
+    `;
+    c.appendChild(empty);
+    return;
+  }
+  state.selected.map(id => IPHONES.find(m=>m.id===id))
+                .forEach(m => c.appendChild(renderCard(m)));
+}
+
+/* Detection + Bind */
+function updateDetection() {
+  const {w, h} = getViewportLogical();
+  const {model} = bestMatchModel(w, h);
+  const diag = diagonalInchesFromLogical(w, h, model);
+
+  state.me = {
+    name: model ? `Your ${/iPhone/i.test(navigator.userAgent) ? 'iPhone' : 'Device'} (${model.name})` : 'This device',
+    w, h, diag: +diag.toFixed(2), matched: model
+  };
+
+  document.getElementById('detectedName').innerHTML = `<strong>${state.me.name}</strong>`;
+  document.getElementById('detectedDims').textContent = `${w}×${h} logical points`;
+  document.getElementById('kvViewport').textContent   = `${window.innerWidth}×${window.innerHeight}`;
+  document.getElementById('kvDPR').textContent        = `${window.devicePixelRatio || 1}`;
+  document.getElementById('kvDiag').textContent       = `${state.me.diag}" (approx)`;
+
+  renderCanvas();
+}
+
+/* Events */
+document.getElementById('search').addEventListener('input', e=> renderModelList(e.target.value));
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  state.selected = [];
+  renderPills(); renderModelList(document.getElementById('search').value); renderCanvas();
+});
+window.addEventListener('resize', ()=>{
+  clearTimeout(window.__resizeTimer);
+  window.__resizeTimer = setTimeout(updateDetection, 120);
+});
+window.addEventListener('orientationchange', ()=> setTimeout(updateDetection, 250));
+
+/* Init */
+renderModelList();
+renderPills();
+updateDetection();
+</script>
+</body>
+</html>
