@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>iPhone Screen Compare — Outline</title>
+<title>iPhone Screen Compare — v3.3</title>
 <meta name="theme-color" content="#0b0e14">
 <style>
   :root{
@@ -24,13 +24,13 @@
     overscroll-behavior-y:none;
   }
 
-  /* Stage fills viewport; we center a canvas sized by JS to your aspect */
-  .stage{position:fixed; inset:0; display:grid; place-items:center; padding:0;}
+  /* Stage fills viewport; canvas is sized by JS to match your aspect */
+  .stage{position:fixed; inset:0; display:grid; place-items:center;}
   .canvas{
     position:relative;
     overflow:hidden;
     display:grid; place-items:center;
-    max-width:1100px;
+    /* no max-width cap to avoid squeezing on desktop or iPad */
   }
 
   /* Outlines */
@@ -50,7 +50,7 @@
     backdrop-filter:saturate(140%) blur(4px);
   }
 
-  /* Cutouts (Dynamic Island / Notch) */
+  /* Cutouts */
   .cutout{
     position:absolute; left:50%; transform:translateX(-50%);
     border:2px solid currentColor; background:transparent; pointer-events:none;
@@ -94,7 +94,7 @@
   .drawer .head h2{margin:0; font-size:14px; font-weight:600}
   .drawer .head .btn{all:unset; cursor:pointer; padding:7px 12px; border:1px solid var(--fab-ring); border-radius:10px}
   .drawer .body{overflow:auto}
-  .drawer .wrap{display:grid; gap:14px; padding:8px 14px 16px; max-width:1100px; margin:0 auto}
+  .drawer .wrap{display:grid; gap:14px; padding:8px 14px 16px; margin:0 auto; width:min(1100px, 100vw);}
   @media(min-width:860px){.grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px}}
   .card{border:1px solid var(--fab-ring); border-radius:14px; padding:12px; background:rgba(255,255,255,.02);}
   .card h3{margin:0 0 6px 0; font-size:13px}
@@ -130,7 +130,7 @@
   <section class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" aria-hidden="true">
     <div class="head">
       <h2 id="drawerTitle">Screens & comparisons</h2>
-      <div style="display:flex; gap:8px"><button class="btn" id="closeBtn" aria-label="Close">Close</button></div>
+    <div style="display:flex; gap:8px"><button class="btn" id="closeBtn" aria-label="Close">Close</button></div>
     </div>
     <div class="body">
       <div class="wrap">
@@ -149,7 +149,6 @@
               <button class="btn" id="clearOverride">Clear</button>
             </div>
           </div>
-
           <div class="card">
             <h3>Compare iPhones (up to 3)</h3>
             <input class="search" id="search" placeholder="Search iPhone models…">
@@ -160,7 +159,7 @@
       </div>
     </div>
     <div class="actions"><button class="btn primary" id="doneBtn">Done</button></div>
-    <div class="footer">Tap Done (or outside) to close. Changes apply instantly.</div>
+    <div class="footer">Build <strong>v3.3</strong> • Tap Done (or outside) to close.</div>
   </section>
 
 <script>
@@ -188,7 +187,7 @@ const IPHONES = [
 
 /* Corner-radius heuristics (ratio of min(w,h)) — tuned */
 const RATIO_BY_ID = {
-  '16ProMax':0.106, /* tweaked down for better match */
+  '16ProMax':0.104, /* flatter to match hardware */
   '17ProMax':0.112,'14-15PM':0.110,
   '16Pro':0.108,'17':0.108,'17Pro':0.108,
   '12-13-14-15-16':0.108,'13Pro':0.108,'14-15Pro':0.108,
@@ -364,7 +363,7 @@ function updateDetection(){
   renderOutlines();
 }
 
-/* JS-driven canvas sizing using true viewport — avoids Safari toolbar issues */
+/* JS-driven canvas sizing using true viewport */
 function resizeCanvasToAspect(){
   const c = $('#canvas');
   if (!c || !state.me?.w) return;
@@ -386,8 +385,6 @@ function resizeCanvasToAspect(){
 }
 
 /* ========================= Outline Renderer ========================= */
-/* Scale by WIDTH/HEIGHT only. With the canvas locked to your aspect via JS,
-   your own model gets equal margins on all sides. */
 function renderOutlines(){
   const canvas = $('#canvas');
   $$('.outline').forEach(n=>n.remove());
@@ -401,21 +398,26 @@ function renderOutlines(){
   const maxW = canvas.clientWidth;
   const maxH = canvas.clientHeight;
 
-  // If everything is <= me, base on me; else base on largest bbox
-  const bboxArea = m => m.w * m.h;
-  const largest = models.reduce((a,b)=> bboxArea(a.m) > bboxArea(b.m) ? a : b).m;
+  // Base decision
   const me = state.me;
   const allSmaller = models.every(x=> x.m.w <= me.w && x.m.h <= me.h);
+  const largest = models.reduce((a,b)=> (a.m.w*a.m.h) > (b.m.w*b.m.h) ? a : b).m;
   const baseModel = allSmaller ? me : largest;
 
-  // Scale strictly from width — eliminates rounding drift
+  // Scale strictly from width (no diagonal math)
   const sBase = maxW / baseModel.w;
 
   function dims(m){ return { w: m.w * sBase, h: m.h * sBase }; }
   function cornerPx(m, w, h){ return Math.round(Math.min(w,h) * cornerRatioFor(m)); }
 
   models.forEach(({kind,m})=>{
-    const {w,h} = dims(m);
+    let {w,h} = dims(m);
+
+    // If I'm the base and every comparison is smaller, force exact fill
+    if (allSmaller && m === me){
+      w = maxW; h = maxH; // edge-to-edge inside canvas
+    }
+
     const el = document.createElement('div');
     el.className = `outline ${kind}`;
     el.style.width = `${w}px`;
@@ -427,7 +429,7 @@ function renderOutlines(){
     if (cut !== 'none'){
       const c = document.createElement('div');
       c.className = `cutout ${cut}`;
-      const top = h * 0.024; // ~2.4% from top
+      const top = h * 0.024;
       let cw, ch, br;
       if (cut === 'island'){
         cw = w * 0.33; ch = Math.max(10, h*0.058); br = Math.min(cw, ch) * 0.5;
