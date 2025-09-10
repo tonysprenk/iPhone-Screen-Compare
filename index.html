@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>iPhone Screen Compare — v3.4</title>
+<title>iPhone Screen Compare — v3.6</title>
 <meta name="theme-color" content="#0b0e14">
 <style>
   :root{
@@ -32,20 +32,15 @@
     padding:4px 7px; border-radius:999px; white-space:nowrap; pointer-events:none;
     backdrop-filter:saturate(140%) blur(4px);
   }
-  .cutout{
-    position:absolute; left:50%; transform:translateX(-50%);
+  .cutout{position:absolute; left:50%; transform:translateX(-50%);
     border:2px solid currentColor; background:transparent; pointer-events:none;
-    transition:width .45s,height .45s,border-radius .45s,top .45s;
-  }
-  .cutout.island{ border-radius:999px; }
-  .cutout.notch{
-    border-top-left-radius:12px; border-top-right-radius:12px;
-    border-bottom-left-radius:10px; border-bottom-right-radius:10px;
-  }
-  .me{  border-color:#23c8ff; color:#23c8ff; box-shadow:0 0 0 1px rgba(35,200,255,.25) inset;}
-  .c1{  border-color:#7d84ff; color:#7d84ff;}
-  .c2{  border-color:#5cf5b1; color:#5cf5b1;}
-  .c3{  border-color:#ffd76a; color:#ffd76a;}
+    transition:width .45s,height .45s,border-radius .45s,top .45s;}
+  .cutout.island{border-radius:999px;}
+  .cutout.notch{border-top-left-radius:12px;border-top-right-radius:12px;border-bottom-left-radius:10px;border-bottom-right-radius:10px;}
+  .me{border-color:#23c8ff;color:#23c8ff;box-shadow:0 0 0 1px rgba(35,200,255,.25) inset;}
+  .c1{border-color:#7d84ff;color:#7d84ff;}
+  .c2{border-color:#5cf5b1;color:#5cf5b1;}
+  .c3{border-color:#ffd76a;color:#ffd76a;}
   .fab{
     position:fixed; left:50%; transform:translateX(-50%);
     bottom:calc(12px + env(safe-area-inset-bottom,0px)); z-index:10;
@@ -74,8 +69,12 @@
   @media(min-width:860px){.grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px}}
   .card{border:1px solid var(--fab-ring); border-radius:14px; padding:12px; background:rgba(255,255,255,.02);}
   .card h3{margin:0 0 6px 0; font-size:13px}
+  .row{display:flex; align-items:center; gap:10px; margin-top:10px}
+  .switch{appearance:none; width:42px; height:24px; border-radius:999px; position:relative; border:1px solid var(--fab-ring); background:#0f1730; outline:none; cursor:pointer}
+  .switch:after{content:""; position:absolute; width:18px; height:18px; border-radius:50%; left:3px; top:2px; background:#9aa3b2; transition:transform .2s}
+  .switch:checked{background:#1c2a4f}
+  .switch:checked:after{transform:translateX(18px); background:#8ae0ff}
   .kv{display:grid; grid-template-columns:auto 1fr; gap:2px 10px; font-size:12px; color:var(--muted)}
-  .muted{color:var(--muted)}
   .btn{all:unset; cursor:pointer; padding:7px 10px; border:1px solid var(--fab-ring); border-radius:10px}
   .select,.search{width:100%; padding:10px 12px; border-radius:10px; border:1px solid var(--fab-ring); background:transparent; color:var(--ink);}
   .models{max-height:240px; overflow:auto; border:1px solid var(--fab-ring); border-radius:12px}
@@ -118,8 +117,14 @@
               <div>DPR</div><div id="kvDPR" class="muted">—</div>
               <div>Diagonal</div><div id="kvDiag" class="muted">—</div>
             </div>
-            <div style="display:flex; gap:8px; align-items:center; margin-top:10px">
-              <select id="overrideSel" class="select"></select>
+            <div class="row">
+              <label style="display:flex;align-items:center;gap:10px">
+                <input id="fullDeviceToggle" type="checkbox" class="switch">
+                <span style="font-size:13px;color:var(--muted)">Full-device mode (ignore browser bars)</span>
+              </label>
+            </div>
+            <div class="row">
+              <select id="overrideSel" class="select" aria-label="Override model"></select>
               <button class="btn" id="applyOverride">Set</button>
               <button class="btn" id="clearOverride">Clear</button>
             </div>
@@ -134,142 +139,105 @@
       </div>
     </div>
     <div class="actions"><button class="btn primary" id="doneBtn">Done</button></div>
-    <div class="footer">Build <strong>v3.4</strong> • Changes apply instantly.</div>
+    <div class="footer">Build <strong>v3.6</strong> • Viewport vs Full-device toggle fixes the “unequal margins” caused by Safari bars.</div>
   </section>
 
 <script>
-/* ------------ Data ------------ */
+/* ===== Data ===== */
 const IPHONES = [
-  {id:'5-5s-SE1',   name:'iPhone 5 / 5s / SE (1st gen)',   w:320, h:568, diag:4.0, cutout:'none'},
-  {id:'6-7-8-SE23', name:'iPhone 6 / 7 / 8 / SE (2nd/3rd)', w:375, h:667, diag:4.7, cutout:'none'},
-  {id:'6P-7P-8P',   name:'iPhone 6 Plus / 7 Plus / 8 Plus', w:414, h:736, diag:5.5, cutout:'none'},
-  {id:'X-XS-11Pro', name:'iPhone X / XS / 11 Pro',          w:375, h:812, diag:5.8, cutout:'notch'},
-  {id:'XR-11',      name:'iPhone XR / 11',                   w:414, h:896, diag:6.1, cutout:'notch'},
-  {id:'12mini',     name:'iPhone 12 / 13 mini',              w:360, h:780, diag:5.4, cutout:'notch'},
-  {id:'12-13-14-15-16',name:'iPhone 12 / 13 / 14 / 15 / 16', w:390, h:844, diag:6.1, cutout:'island'},
-  {id:'13Pro',      name:'iPhone 13 Pro',                    w:390, h:844, diag:6.1, cutout:'notch'},
-  {id:'14-15Pro',   name:'iPhone 14 / 15 Pro',               w:393, h:852, diag:6.1, cutout:'island'},
-  {id:'14-15Plus',  name:'iPhone 14 / 15 Plus',              w:428, h:926, diag:6.7, cutout:'island'},
-  {id:'12-13PM',    name:'iPhone 12 / 13 Pro Max',           w:428, h:926, diag:6.7, cutout:'notch'},
-  {id:'14-15PM',    name:'iPhone 14 / 15 Pro Max',           w:430, h:932, diag:6.7, cutout:'island'},
-  {id:'16Pro',      name:'iPhone 16 Pro',                    w:402, h:874, diag:6.3, cutout:'island'},
-  {id:'16ProMax',   name:'iPhone 16 Pro Max',                w:440, h:956, diag:6.9, cutout:'island'},
-  {id:'17',         name:'iPhone 17',                        w:402, h:874, diag:6.3, cutout:'island'},
-  {id:'17Pro',      name:'iPhone 17 Pro',                    w:402, h:874, diag:6.3, cutout:'island'},
-  {id:'17ProMax',   name:'iPhone 17 Pro Max',                w:440, h:956, diag:6.9, cutout:'island'},
-  {id:'Air',        name:'iPhone Air',                       w:414, h:900, diag:6.5, cutout:'island'},
+  {id:'5-5s-SE1',name:'iPhone 5 / 5s / SE (1st gen)',w:320,h:568,diag:4.0,cutout:'none'},
+  {id:'6-7-8-SE23',name:'iPhone 6 / 7 / 8 / SE (2nd/3rd)',w:375,h:667,diag:4.7,cutout:'none'},
+  {id:'6P-7P-8P',name:'iPhone 6 Plus / 7 Plus / 8 Plus',w:414,h:736,diag:5.5,cutout:'none'},
+  {id:'X-XS-11Pro',name:'iPhone X / XS / 11 Pro',w:375,h:812,diag:5.8,cutout:'notch'},
+  {id:'XR-11',name:'iPhone XR / 11',w:414,h:896,diag:6.1,cutout:'notch'},
+  {id:'12mini',name:'iPhone 12 / 13 mini',w:360,h:780,diag:5.4,cutout:'notch'},
+  {id:'12-13-14-15-16',name:'iPhone 12 / 13 / 14 / 15 / 16',w:390,h:844,diag:6.1,cutout:'island'},
+  {id:'13Pro',name:'iPhone 13 Pro',w:390,h:844,diag:6.1,cutout:'notch'},
+  {id:'14-15Pro',name:'iPhone 14 / 15 Pro',w:393,h:852,diag:6.1,cutout:'island'},
+  {id:'14-15Plus',name:'iPhone 14 / 15 Plus',w:428,h:926,diag:6.7,cutout:'island'},
+  {id:'12-13PM',name:'iPhone 12 / 13 Pro Max',w:428,h:926,diag:6.7,cutout:'notch'},
+  {id:'14-15PM',name:'iPhone 14 / 15 Pro Max',w:430,h:932,diag:6.7,cutout:'island'},
+  {id:'16Pro',name:'iPhone 16 Pro',w:402,h:874,diag:6.3,cutout:'island'},
+  {id:'16ProMax',name:'iPhone 16 Pro Max',w:440,h:956,diag:6.9,cutout:'island'},
+  {id:'17',name:'iPhone 17',w:402,h:874,diag:6.3,cutout:'island'},
+  {id:'17Pro',name:'iPhone 17 Pro',w:402,h:874,diag:6.3,cutout:'island'},
+  {id:'17ProMax',name:'iPhone 17 Pro Max',w:440,h:956,diag:6.9,cutout:'island'},
+  {id:'Air',name:'iPhone Air',w:414,h:900,diag:6.5,cutout:'island'},
 ];
 const RATIO_BY_ID = {
-  '16ProMax':0.104, '17ProMax':0.112,'14-15PM':0.110,
+  '16ProMax':0.104,'17ProMax':0.112,'14-15PM':0.110,
   '16Pro':0.108,'17':0.108,'17Pro':0.108,
   '12-13-14-15-16':0.108,'13Pro':0.108,'14-15Pro':0.108,
   '14-15Plus':0.109,'12-13PM':0.109,'12mini':0.106,
   'XR-11':0.098,'X-XS-11Pro':0.096,'6P-7P-8P':0.066,
   '6-7-8-SE23':0.060,'5-5s-SE1':0.045,'Air':0.107
 };
-function cornerRatioFor(m){
-  if (RATIO_BY_ID[m.id]) return RATIO_BY_ID[m.id];
-  if (m.diag>=6.8) return 0.112;
-  if (m.diag>=6.1) return 0.108;
-  if (m.diag>=5.6) return 0.100;
-  return 0.095;
-}
-const ALT_VIEWPORTS = [
-  {alts:[[430,932],[428,926],[429,932],[431,934]], target:{w:430,h:932}, mapsTo:'14-15PM'},
-  {alts:[[440,956],[439,954],[441,958]],           target:{w:440,h:956}, mapsTo:'16ProMax'},
-  {alts:[[402,874],[400,870],[403,876]],           target:{w:402,h:874}, mapsTo:'16Pro'},
-  {alts:[[390,844],[389,842],[391,846]],           target:{w:390,h:844}, mapsTo:'12-13-14-15-16'},
-  {alts:[[375,812],[376,814]],                     target:{w:375,h:812}, mapsTo:'X-XS-11Pro'},
+function cornerRatioFor(m){ return RATIO_BY_ID[m.id] ?? (m.diag>=6.8?0.112:m.diag>=6.1?0.108:m.diag>=5.6?0.100:0.095); }
+const ALT_VIEWPORTS=[
+  {alts:[[430,932],[428,926],[429,932],[431,934]],target:{w:430,h:932},mapsTo:'14-15PM'},
+  {alts:[[440,956],[439,954],[441,958]],target:{w:440,h:956},mapsTo:'16ProMax'},
+  {alts:[[402,874],[400,870],[403,876]],target:{w:402,h:874},mapsTo:'16Pro'},
+  {alts:[[390,844],[389,842],[391,846]],target:{w:390,h:844},mapsTo:'12-13-14-15-16'},
+  {alts:[[375,812],[376,814]],target:{w:375,h:812},mapsTo:'X-XS-11Pro'},
 ];
 
-/* ------------ Helpers ------------ */
-const $  = s => document.querySelector(s);
-const $$ = s => Array.from(document.querySelectorAll(s));
-function normPair(a,b){ const w=Math.min(a,b), h=Math.max(a,b); return [Math.round(w), Math.round(h)]; }
-function getAllViewportCandidates(){
-  const pairs=[]; const push=(w,h)=>{ if(!w||!h) return; pairs.push(normPair(w,h)); };
-  push(window.innerWidth, window.innerHeight);
-  push(document.documentElement.clientWidth, document.documentElement.clientHeight);
-  if (window.visualViewport) push(window.visualViewport.width, window.visualViewport.height);
-  push(screen.width, screen.height);
-  const uniq=[...new Set(pairs.map(p=>p.join('x')))].map(s=>s.split('x').map(n=>+n));
-  return uniq;
+/* ===== Helpers ===== */
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+function normPair(a,b){const w=Math.min(a,b),h=Math.max(a,b);return [Math.round(w),Math.round(h)];}
+function getAllViewportCandidates(){const pairs=[];const push=(w,h)=>{if(!w||!h)return;pairs.push(normPair(w,h));};
+  push(window.innerWidth,window.innerHeight);
+  push(document.documentElement.clientWidth,document.documentElement.clientHeight);
+  if(window.visualViewport)push(window.visualViewport.width,window.visualViewport.height);
+  push(screen.width,screen.height);
+  return [...new Set(pairs.map(p=>p.join('x')))].map(s=>s.split('x').map(Number));
 }
 function coerceToKnownLogical(w,h){
-  const direct = IPHONES.find(m=>m.w===w && m.h===h);
-  if (direct) return {w,h,id:direct.id};
-  for (const bucket of ALT_VIEWPORTS){
-    for (const [aw,ah] of bucket.alts){
-      if (Math.abs(aw-w)<=6 && Math.abs(ah-h)<=10){
-        const m = IPHONES.find(x=>x.id===bucket.mapsTo);
-        if (m) return {w:m.w, h:m.h, id:m.id};
-      }
-    }
-  }
-  const rw = Math.round(w/2)*2, rh = Math.round(h/2)*2;
-  const m2 = IPHONES.reduce((best,cur)=>{
-    const s = Math.abs(cur.w - rw) + Math.abs(cur.h - rh);
-    return !best || s < best.s ? {m:cur,s} : best;
-  }, null);
+  const direct=IPHONES.find(m=>m.w===w && m.h===h); if(direct) return {w,h,id:direct.id};
+  for(const bucket of ALT_VIEWPORTS){ for(const [aw,ah] of bucket.alts){
+    if(Math.abs(aw-w)<=6 && Math.abs(ah-h)<=10){ const m=IPHONES.find(x=>x.id===bucket.mapsTo); if(m) return {w:m.w,h:m.h,id:m.id}; } } }
+  const rw=Math.round(w/2)*2, rh=Math.round(h/2)*2;
+  const m2=IPHONES.reduce((best,cur)=>{const s=Math.abs(cur.w-rw)+Math.abs(cur.h-rh);return !best||s<best.s?{m:cur,s}:best;},null);
   return {w:rw,h:rh,id:m2?.m?.id||null};
 }
 function getDetectedLogical(){
   const cands=getAllViewportCandidates(); let best=null;
-  for (const [w,h] of cands){
-    const c=coerceToKnownLogical(w,h); const m=IPHONES.find(x=>x.w===c.w && x.h===c.h);
-    if (m){ const score=Math.abs(w-c.w)+Math.abs(h-c.h); if(!best||score<best.score) best={w:m.w,h:m.h,model:m,score}; }
-  }
-  if (best) return best;
+  for(const [w,h] of cands){const c=coerceToKnownLogical(w,h); const m=IPHONES.find(x=>x.w===c.w && x.h===c.h);
+    if(m){const score=Math.abs(w-c.w)+Math.abs(h-c.h); if(!best||score<best.score) best={w:m.w,h:m.h,model:m,score};}}
+  if(best) return best;
   const [iw,ih]=normPair(window.innerWidth,window.innerHeight);
   const f=coerceToKnownLogical(iw,ih); const model=IPHONES.find(x=>x.w===f.w && x.h===f.h)||null;
   return {w:f.w,h:f.h,model,score:999};
 }
 
-/* ------------ State & Drawer ------------ */
-const state={ me:{name:'This device',w:0,h:0,diag:0,matched:null}, selected:[], overrideId:null };
+/* ===== State & UI ===== */
+const state={ me:{name:'This device',w:0,h:0,diag:0,matched:null}, selected:[], overrideId:null, fullDevice:false };
 const fab=$('#fab'), drawer=$('#drawer'), scrim=$('#scrim'), doneBtn=$('#doneBtn'), closeBtn=$('#closeBtn');
-function setDrawer(open){ drawer.classList.toggle('open',open); drawer.setAttribute('aria-hidden',String(!open)); scrim.classList.toggle('show',open); }
-fab.onclick=()=>setDrawer(true); doneBtn.onclick=closeBtn.onclick=scrim.onclick=()=>setDrawer(false);
-document.addEventListener('keydown',e=>{if(e.key==='Escape') setDrawer(false);});
+function setDrawer(open){drawer.classList.toggle('open',open);drawer.setAttribute('aria-hidden',String(!open));scrim.classList.toggle('show',open);}
+fab.onclick=()=>setDrawer(true); doneBtn.onclick=closeBtn.onclick=scrim.onclick=()=>setDrawer(false); document.addEventListener('keydown',e=>{if(e.key==='Escape') setDrawer(false);});
+$('#fullDeviceToggle').onchange=e=>{state.fullDevice=e.target.checked; resizeCanvasToAspect(); renderOutlines();};
 
-/* ------------ UI lists ------------ */
-function populateOverride(){
-  const sel=$('#overrideSel'); sel.innerHTML='';
-  IPHONES.forEach(m=>{ const o=document.createElement('option'); o.value=m.id; o.textContent=m.name; sel.appendChild(o); });
-}
-function renderModelList(filter=''){
-  const box=$('#modelList'); box.innerHTML='';
-  const q=filter.trim().toLowerCase();
+function populateOverride(){const sel=$('#overrideSel'); sel.innerHTML=''; IPHONES.forEach(m=>{const o=document.createElement('option'); o.value=m.id; o.textContent=m.name; sel.appendChild(o);});}
+function renderModelList(filter=''){const box=$('#modelList'); box.innerHTML=''; const q=filter.trim().toLowerCase();
   const items=IPHONES.filter(m=>!state.selected.includes(m.id)).filter(m=>!q||m.name.toLowerCase().includes(q));
-  if(!items.length){ const d=document.createElement('div'); d.className='model'; d.style.color='var(--muted)'; d.textContent='No matches'; box.appendChild(d); return; }
-  items.forEach(m=>{
-    const el=document.createElement('div'); el.className='model';
+  if(!items.length){const d=document.createElement('div'); d.className='model'; d.style.color='var(--muted)'; d.textContent='No matches'; box.appendChild(d); return;}
+  items.forEach(m=>{const el=document.createElement('div'); el.className='model';
     el.innerHTML=`<div>${m.name}<br><small>${m.w}×${m.h} • ${m.diag}"</small></div><button class="btn">Add</button>`;
-    el.querySelector('button').onclick=()=>{ if(state.selected.length>=3){alert('You can compare up to 3 iPhones.');return;}
-      state.selected.push(m.id); renderPills(); renderModelList($('#search').value); renderOutlines(); };
-    box.appendChild(el);
-  });
+    el.querySelector('button').onclick=()=>{if(state.selected.length>=3){alert('You can compare up to 3 iPhones.');return;}
+      state.selected.push(m.id); renderPills(); renderModelList($('#search').value); renderOutlines();};
+    box.appendChild(el);});
 }
-function renderPills(){
-  const row=$('#pills'); row.innerHTML='';
-  state.selected.forEach(id=>{
-    const m=IPHONES.find(x=>x.id===id); const p=document.createElement('div'); p.className='pill';
-    p.innerHTML=`<span>${m.name}</span><button aria-label="Remove">&times;</button>`;
-    p.querySelector('button').onclick=()=>{ state.selected=state.selected.filter(x=>x!==id); renderPills(); renderModelList($('#search').value); renderOutlines(); };
-    row.appendChild(p);
-  });
+function renderPills(){const row=$('#pills'); row.innerHTML=''; state.selected.forEach(id=>{const m=IPHONES.find(x=>x.id===id);
+  const p=document.createElement('div'); p.className='pill'; p.innerHTML=`<span>${m.name}</span><button aria-label="Remove">&times;</button>`;
+  p.querySelector('button').onclick=()=>{state.selected=state.selected.filter(x=>x!==id); renderPills(); renderModelList($('#search').value); renderOutlines();};
+  row.appendChild(p);});
 }
 $('#search').oninput=e=>renderModelList(e.target.value);
-$('#applyOverride').onclick=()=>{
-  const id=$('#overrideSel').value, m=IPHONES.find(x=>x.id===id); if(!m) return;
-  state.overrideId=id; state.me={name:`Your iPhone (${m.name})`,w:m.w,h:m.h,diag:m.diag,matched:m};
-  updateInfoPanel(); resizeCanvasToAspect(); renderOutlines();
-};
-$('#clearOverride').onclick=()=>{ state.overrideId=null; updateDetection(); };
+$('#applyOverride').onclick=()=>{const id=$('#overrideSel').value, m=IPHONES.find(x=>x.id===id); if(!m) return;
+  state.overrideId=id; state.me={name:`Your iPhone (${m.name})`,w:m.w,h:m.h,diag:m.diag,matched:m}; updateInfoPanel(); resizeCanvasToAspect(); renderOutlines();};
+$('#clearOverride').onclick=()=>{state.overrideId=null; updateDetection();};
 
-/* ------------ Detection + Canvas sizing ------------ */
 function updateDetection(){
-  const d=state.overrideId?(()=>{const m=IPHONES.find(x=>x.id===state.overrideId);return{w:m.w,h:m.h,model:m};})():getDetectedLogical();
+  const d=state.overrideId?(()=>{const m=IPHONES.find(x=>x.id===state.overrideId); return {w:m.w,h:m.h,model:m};})():getDetectedLogical();
   state.me={name:d.model?`Your ${/iPhone/i.test(navigator.userAgent)?'iPhone':'Device'} (${d.model.name})`:'This device',w:d.w,h:d.h,diag:d.model?.diag??0,matched:d.model};
   updateInfoPanel(); resizeCanvasToAspect(); renderOutlines();
 }
@@ -280,28 +248,32 @@ function updateInfoPanel(){
   $('#kvDiag').textContent=state.me.matched?.diag?`${state.me.matched.diag}"`:'—';
 }
 
-/* BEST-FIT using visualViewport + strict snapping to prevent aspect drift */
-function bestFitToViewport(vw,vh,ar){
-  const fitW={mode:'W', w:vw, h:vw/ar};
-  const fitH={mode:'H', w:vh*ar, h:vh};
-  // choose the largest that fits
-  let c = (fitW.w<=vw && fitW.h<=vh) ? fitW : fitH;
-  if (fitH.w<=vw && fitH.h<=vh && (fitH.w*fitH.h) > (c.w*c.h)) c = fitH;
-  if (c.mode==='W'){ const w=Math.floor(c.w); const h=Math.floor(w/ar); return {w,h}; }
-  else{ const h=Math.floor(c.h); const w=Math.floor(h*ar); return {w,h}; }
+/* ===== Sizing ===== */
+function bestFit(vw,vh,ar,fullDevice){
+  if(fullDevice){
+    // Use large-viewport intention: prefer width so aspect equals device even if bars are present.
+    const w=Math.floor(vw);
+    const h=Math.floor(w/ar);
+    return {w, h};
+  }else{
+    const wFit={w:vw, h:vw/ar}, hFit={w:vh*ar, h:vh};
+    let c=(wFit.w<=vw && wFit.h<=vh)?wFit:hFit;
+    if(hFit.w<=vw && hFit.h<=vh && (hFit.w*hFit.h)>(c.w*c.h)) c=hFit;
+    if(c===wFit){const w=Math.floor(c.w); const h=Math.floor(w/ar); return {w,h};}
+    const h=Math.floor(c.h); const w=Math.floor(h*ar); return {w,h};
+  }
 }
-
 function resizeCanvasToAspect(){
   const c=$('#canvas'); if(!c||!state.me?.w) return;
   const vv=window.visualViewport;
-  const vw=Math.floor(vv?.width || window.innerWidth);
-  const vh=Math.floor(vv?.height|| window.innerHeight);
+  const vw=Math.floor((vv?.width ?? window.innerWidth));
+  const vh=Math.floor((vv?.height?? window.innerHeight));
   const ar=state.me.w/state.me.h;
-  const {w,h}=bestFitToViewport(vw,vh,ar);
+  const {w,h}=bestFit(vw,vh,ar,state.fullDevice);
   c.style.width=w+'px'; c.style.height=h+'px';
 }
 
-/* ------------ Renderer ------------ */
+/* ===== Renderer ===== */
 function renderOutlines(){
   const canvas=$('#canvas'); $$('.outline').forEach(n=>n.remove());
   const models=[{kind:'me',m:state.me}, ...state.selected.map((id,i)=>({kind:'c'+(i+1), m:IPHONES.find(x=>x.id===id)}))].filter(x=>x.m&&x.m.w);
@@ -313,13 +285,13 @@ function renderOutlines(){
   const largest=models.reduce((a,b)=> (a.m.w*a.m.h)>(b.m.w*b.m.h)?a:b).m;
   const baseModel=allSmaller?me:largest;
 
-  const sBase=maxW/baseModel.w; // scale strictly from width
+  const sBase=maxW/baseModel.w;
   function dims(m){ return {w:m.w*sBase, h:m.h*sBase}; }
   function cornerPx(m,w,h){ return Math.round(Math.min(w,h)*cornerRatioFor(m)); }
 
   models.forEach(({kind,m})=>{
     let {w,h}=dims(m);
-    if(allSmaller && m===me){ w=maxW; h=maxH; } // fill canvas exactly
+    if(allSmaller && m===me){ w=maxW; h=maxH; } // fill canvas
 
     const el=document.createElement('div'); el.className=`outline ${kind}`;
     el.style.width=w+'px'; el.style.height=h+'px'; el.style.borderRadius=cornerPx(m,w,h)+'px';
@@ -341,26 +313,9 @@ function renderOutlines(){
   });
 }
 
-/* ------------ Events & Init ------------ */
+/* ===== Events & Init ===== */
 addEventListener('resize', ()=>{ clearTimeout(window.__rT); window.__rT=setTimeout(()=>{ resizeCanvasToAspect(); renderOutlines(); },120); });
 addEventListener('orientationchange', ()=> setTimeout(()=>{ resizeCanvasToAspect(); renderOutlines(); },250));
-
-function populateOverride(){ const sel=$('#overrideSel'); sel.innerHTML=''; IPHONES.forEach(m=>{ const o=document.createElement('option'); o.value=m.id; o.textContent=m.name; sel.appendChild(o); }); }
-function renderModelList(filter=''){ const box=$('#modelList'); box.innerHTML=''; const q=filter.trim().toLowerCase();
-  const items=IPHONES.filter(m=>!state.selected.includes(m.id)).filter(m=>!q||m.name.toLowerCase().includes(q));
-  if(!items.length){ const d=document.createElement('div'); d.className='model'; d.style.color='var(--muted)'; d.textContent='No matches'; box.appendChild(d); return; }
-  items.forEach(m=>{ const el=document.createElement('div'); el.className='model';
-    el.innerHTML=`<div>${m.name}<br><small>${m.w}×${m.h} • ${m.diag}"</small></div><button class="btn">Add</button>`;
-    el.querySelector('button').onclick=()=>{ if(state.selected.length>=3){alert('You can compare up to 3 iPhones.');return;}
-      state.selected.push(m.id); renderPills(); renderModelList($('#search').value); renderOutlines(); };
-    box.appendChild(el); });
-}
-function renderPills(){ const row=$('#pills'); row.innerHTML=''; state.selected.forEach(id=>{ const m=IPHONES.find(x=>x.id===id);
-  const p=document.createElement('div'); p.className='pill'; p.innerHTML=`<span>${m.name}</span><button aria-label="Remove">&times;</button>`;
-  p.querySelector('button').onclick=()=>{ state.selected=state.selected.filter(x=>x!==id); renderPills(); renderModelList($('#search').value); renderOutlines(); };
-  row.appendChild(p); });
-}
-document.getElementById('search').oninput=e=>renderModelList(e.target.value);
 
 populateOverride(); renderModelList(); renderPills(); updateDetection();
 </script>
