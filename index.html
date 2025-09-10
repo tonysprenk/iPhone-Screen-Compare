@@ -15,10 +15,6 @@
     --accent:#8ae0ff;
     --ok:#5cf5b1;
     --shadow:0 14px 40px rgba(0,0,0,.35);
-
-    /* aspect (set by JS): --meW / --meH */
-    --meW:390;
-    --meH:844;
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -28,17 +24,14 @@
     overscroll-behavior-y:none;
   }
 
-  /* Stage fills viewport; we center a canvas whose aspect is locked to your phone */
+  /* Viewport stage */
   .stage{position:fixed; inset:0; display:grid; place-items:center; padding:0;}
-
-  /* The canvas is borderless but has your aspect ratio. It scales to fit both width and height. */
+  /* Canvas is borderless; JS sets exact px width/height to lock aspect */
   .canvas{
     position:relative;
-    aspect-ratio: calc(var(--meW) / var(--meH));
-    width: min(100vw, calc(100svh * (var(--meW) / var(--meH))));
-    height: min(100svh, calc(100vw * (var(--meH) / var(--meW))));
+    overflow:hidden;
+    display:grid; place-items:center;
     max-width:1100px;
-    overflow:hidden; display:grid; place-items:center;
   }
 
   /* Outlines */
@@ -58,7 +51,7 @@
     backdrop-filter:saturate(140%) blur(4px);
   }
 
-  /* Cutouts (Dynamic Island / Notch) */
+  /* Cutouts */
   .cutout{
     position:absolute; left:50%; transform:translateX(-50%);
     border:2px solid currentColor; background:transparent; pointer-events:none;
@@ -157,6 +150,7 @@
               <button class="btn" id="clearOverride">Clear</button>
             </div>
           </div>
+
           <div class="card">
             <h3>Compare iPhones (up to 3)</h3>
             <input class="search" id="search" placeholder="Search iPhone models…">
@@ -210,7 +204,7 @@ function cornerRatioFor(m){
   return 0.095;
 }
 
-/* Alt viewport buckets (to normalize iOS-reported sizes) */
+/* Alt viewport buckets (normalize iOS-reported sizes) */
 const ALT_VIEWPORTS = [
   {alts:[[430,932],[428,926],[429,932],[431,934]], target:{w:430,h:932}, mapsTo:'14-15PM'},
   {alts:[[440,956],[439,954],[441,958]],           target:{w:440,h:956}, mapsTo:'16ProMax'},
@@ -345,13 +339,13 @@ $('#applyOverride').addEventListener('click', ()=>{
   const m = IPHONES.find(x=>x.id===id); if (!m) return;
   state.overrideId = id;
   state.me = {name:`Your iPhone (${m.name})`, w:m.w, h:m.h, diag:m.diag, matched:m};
-  updateInfoPanel(); updateCanvasAspect(); renderOutlines();
+  updateInfoPanel(); resizeCanvasToAspect(); renderOutlines();
 });
 $('#clearOverride').addEventListener('click', ()=>{
   state.overrideId = null; updateDetection();
 });
 
-/* ========================= Detection + Canvas Aspect ========================= */
+/* ========================= Detection + Canvas Sizing ========================= */
 function updateDetection(){
   const detected = state.overrideId
     ? (()=>{ const m = IPHONES.find(x=>x.id===state.overrideId); return {w:m.w,h:m.h,model:m}; })()
@@ -366,26 +360,32 @@ function updateDetection(){
   $('#kvDPR').textContent = `${window.devicePixelRatio||1}`;
   $('#kvDiag').textContent = state.me.matched?.diag ? `${state.me.matched.diag}"` : '—';
 
-  updateCanvasAspect();
+  resizeCanvasToAspect();
   renderOutlines();
 }
-function updateCanvasAspect(){
+
+/* JS-driven canvas sizing using true viewport (fixes Safari toolbar differences) */
+function resizeCanvasToAspect(){
   const c = $('#canvas');
-  if (!state.me?.w) return;
-  // Lock canvas aspect to the detected phone
-  c.style.setProperty('--meW', state.me.w);
-  c.style.setProperty('--meH', state.me.h);
-}
-function updateInfoPanel(){
-  $('#detectedName').textContent = state.me.name + (state.overrideId ? ' (override)' : '');
-  $('#detectedDims').textContent = `${state.me.w}×${state.me.h} logical points`;
-  $('#kvDPR').textContent = `${window.devicePixelRatio||1}`;
-  $('#kvDiag').textContent = state.me.matched?.diag ? `${state.me.matched.diag}"` : '—';
+  if (!c || !state.me?.w) return;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const ar = state.me.w / state.me.h;     // logical aspect
+
+  // Try to use full height first
+  let h = vh;
+  let w = h * ar;
+  if (w > vw){ // too wide, fit width instead
+    w = vw;
+    h = w / ar;
+  }
+  c.style.width  = Math.round(w) + 'px';
+  c.style.height = Math.round(h) + 'px';
 }
 
 /* ========================= Outline Renderer ========================= */
-/* Scale by WIDTH/HEIGHT only (no diagonal). When your device is the base,
-   margins are equal because the canvas shares the same aspect. */
+/* Scale by WIDTH/HEIGHT only. With canvas locked to your aspect via JS,
+   your own model gets equal margins on all sides. */
 function renderOutlines(){
   const canvas = $('#canvas');
   $$('.outline').forEach(n=>n.remove());
@@ -396,11 +396,10 @@ function renderOutlines(){
 
   if (!models.length) return;
 
-  const pad = 0; // full-bleed inside the aspect-locked canvas
-  const maxW = canvas.clientWidth  - pad*2;
-  const maxH = canvas.clientHeight - pad*2;
+  const maxW = canvas.clientWidth;
+  const maxH = canvas.clientHeight;
 
-  // Decide base: if any comparison is larger in either dimension, base on the largest bbox
+  // Base: if everything is <= me, base on me; else base on largest bbox
   const bboxArea = m => m.w * m.h;
   const largest = models.reduce((a,b)=> bboxArea(a.m) > bboxArea(b.m) ? a : b).m;
   const me = state.me;
@@ -409,14 +408,8 @@ function renderOutlines(){
 
   const sBase = Math.min(maxW/baseModel.w, maxH/baseModel.h);
 
-  function dims(m){
-    const s = sBase; // scale by exact logical points
-    return { w: m.w * s, h: m.h * s };
-  }
-  function cornerPx(m, w, h){
-    const ratio = cornerRatioFor(m);
-    return Math.round(Math.min(w,h) * ratio);
-  }
+  function dims(m){ const s = sBase; return { w: m.w * s, h: m.h * s }; }
+  function cornerPx(m, w, h){ return Math.round(Math.min(w,h) * (RATIO_BY_ID[m.id] ?? 0.108)); }
 
   models.forEach(({kind,m})=>{
     const {w,h} = dims(m);
@@ -426,17 +419,17 @@ function renderOutlines(){
     el.style.height = `${h}px`;
     el.style.borderRadius = cornerPx(m,w,h)+'px';
 
-    // Cutout (Dynamic Island / notch)
+    // Cutout
     const cut = (m.cutout||'none');
     if (cut !== 'none'){
       const c = document.createElement('div');
       c.className = `cutout ${cut}`;
-      const top = h * 0.025; // 2.5% from top
+      const top = h * 0.025;
       let cw, ch, br;
       if (cut === 'island'){
         cw = w * 0.34; ch = Math.max(10, h*0.06); br = Math.min(cw, ch) * 0.5;
         c.style.borderRadius = `${br}px`;
-      } else { // notch
+      } else {
         cw = w * 0.44; ch = Math.max(12, h*0.065);
       }
       c.style.top = `${top}px`;
@@ -454,8 +447,8 @@ function renderOutlines(){
 }
 
 /* ========================= Events ========================= */
-addEventListener('resize', ()=>{ clearTimeout(window.__rT); window.__rT=setTimeout(updateDetection,120); });
-addEventListener('orientationchange', ()=> setTimeout(updateDetection, 250));
+addEventListener('resize', ()=>{ clearTimeout(window.__rT); window.__rT=setTimeout(()=>{ resizeCanvasToAspect(); renderOutlines(); },120); });
+addEventListener('orientationchange', ()=> setTimeout(()=>{ resizeCanvasToAspect(); renderOutlines(); }, 250));
 
 /* ========================= Init ========================= */
 populateOverride();
